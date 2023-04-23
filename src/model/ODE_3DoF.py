@@ -1,8 +1,8 @@
 from math import cos, sin 
 
-import data
 import utils
 import model
+import data
 from data.thrust import get_thrust
 from model.engine import engine_power_level
 

@@ -1,13 +1,14 @@
-from csaps import csaps
+from scipy.interpolate import pchip_interpolate, RegularGridInterpolator
 
 import data._engine as engine
 
 
 def get_thrust(H, M, Pa):
-    P = csaps(
-        [engine.Pa1, engine.H1, engine.M1],
+    interpP = RegularGridInterpolator(
+        (engine.Pa1, engine.H1, engine.M1),
         engine.Pt1,
-        [Pa, H, M],
-        smooth=1.0 - 10**-5,
-    ).flatten()
-    return P
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    return interpP((Pa, H, M))

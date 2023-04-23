@@ -1,28 +1,26 @@
 import data._aerodynamics as aerodynamics
 import numpy as np
-from csaps import csaps
-from scipy.interpolate import pchip_interpolate
+from scipy.interpolate import pchip_interpolate, RegularGridInterpolator
 
 
 def get_Cy(alpha, beta, fi, dnos, Wz, V, ba, sb):
-    Cy = csaps(
-        [aerodynamics.fi1, aerodynamics.alpha1, aerodynamics.beta1],
+    interpCy = RegularGridInterpolator(
+        (aerodynamics.fi1, aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.Cy1,
-        [fi, alpha, beta],
-        smooth=1.0 - 10**-6,
-    ).flatten()
-    Cy0 = csaps(
-        [aerodynamics.fi1, aerodynamics.alpha1, aerodynamics.beta1],
-        aerodynamics.Cy1,
-        [0, alpha, beta],
-        smooth=1.0 - 10**-6,
-    ).flatten()
-    Cy_nos = csaps(
-        [aerodynamics.alpha2, aerodynamics.beta1],
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    Cy = interpCy((fi, alpha, beta))
+    Cy0 = interpCy((0, alpha, beta))
+    interpCy_nos = RegularGridInterpolator(
+        (aerodynamics.alpha2, aerodynamics.beta1),
         aerodynamics.Cy_nos1,
-        [alpha, beta],
-        smooth=1.0 - 1.0**-6,
-    ).flatten()
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    Cy_nos = interpCy_nos((alpha, beta))
     Cywz = pchip_interpolate(
         aerodynamics.alpha1, aerodynamics.Cywz1, alpha
     ) + pchip_interpolate(aerodynamics.alpha2, aerodynamics.dCywz_nos1, alpha) * (
@@ -39,24 +37,23 @@ def get_Cy(alpha, beta, fi, dnos, Wz, V, ba, sb):
 
 
 def get_Cx(alpha, beta, fi, dnos, Wz, V, ba, sb):
-    Cx = csaps(
-        [aerodynamics.fi1, aerodynamics.alpha1, aerodynamics.beta1],
+    interpCx = RegularGridInterpolator(
+        (aerodynamics.fi1, aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.Cx1,
-        [fi, alpha, beta],
-        smooth=1.0 - 10**-5,
-    ).flatten()
-    Cx0 = csaps(
-        [aerodynamics.fi1, aerodynamics.alpha1, aerodynamics.beta1],
-        aerodynamics.Cx1,
-        [0, alpha, beta],
-        smooth=1.0 - 10**-5,
-    ).flatten()
-    Cx_nos = csaps(
-        [aerodynamics.alpha2, aerodynamics.beta1],
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    Cx = interpCx((fi, alpha, beta))
+    Cx0 = interpCx((0, alpha, beta))
+    interpCx_nos = RegularGridInterpolator(
+        (aerodynamics.alpha2, aerodynamics.beta1),
         aerodynamics.Cy_nos1,
-        [alpha, beta],
-        smooth=1.0 - 1.0**-5,
-    ).flatten()
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    Cx_nos = interpCx_nos((alpha, beta))
     Cxwz = pchip_interpolate(
         aerodynamics.alpha1, aerodynamics.Cxwz1, alpha
     ) + pchip_interpolate(aerodynamics.alpha2, aerodynamics.dCxwz_nos1, alpha) * (
@@ -73,36 +70,46 @@ def get_Cx(alpha, beta, fi, dnos, Wz, V, ba, sb):
 
 
 def get_Cz(alpha, beta, drn, dail, dnos, Wx, Wy, V, l):
-    Cz = csaps(
-        [aerodynamics.alpha1, aerodynamics.beta1],
+    interpCz = RegularGridInterpolator(
+        (aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.Cz1,
-        [alpha, beta],
-        smooth=1.0 - 10**-5,
-    ).flatten()
-    Cz_nos = csaps(
-        [aerodynamics.alpha2, aerodynamics.beta1],
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    Cz = interpCz((alpha, beta))
+    interpCz_nos = RegularGridInterpolator(
+        (aerodynamics.alpha2, aerodynamics.beta1),
         aerodynamics.Cz_nos1,
-        [alpha, beta],
-        smooth=1.0 - 10**-5,
-    ).flatten()
-    Czdel = csaps(
-        [aerodynamics.alpha1, aerodynamics.beta1],
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    Cz_nos = interpCz_nos((alpha, beta))
+    interpCzdel = RegularGridInterpolator(
+        (aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.Czdel20,
-        [alpha, beta],
-        smooth=1.0 - 10**-5,
-    ).flatten()
-    Czdel_nos = csaps(
-        [aerodynamics.alpha2, aerodynamics.beta1],
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    Czdel = interpCzdel((alpha, beta))
+    interpCzdel_nos = RegularGridInterpolator(
+        (aerodynamics.alpha2, aerodynamics.beta1),
         aerodynamics.Czdel20_nos,
-        [alpha, beta],
-        smooth=1.0 - 10**-5,
-    ).flatten()
-    Czdrn = csaps(
-        [aerodynamics.alpha1, aerodynamics.beta1],
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    Czdel_nos = interpCzdel_nos((alpha, beta))
+    interpCzdrn = RegularGridInterpolator(
+        (aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.Czdrn30,
-        [alpha, beta],
-        smooth=1.0 - 10**-5,
-    ).flatten()
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    Czdrn = interpCzdrn((alpha, beta))
     Czwx1 = pchip_interpolate(aerodynamics.alpha1, aerodynamics.Czwx1, alpha)
     Czwx2 = pchip_interpolate(aerodynamics.alpha2, aerodynamics.dCzwx_nos1, alpha)
     Czwy1 = pchip_interpolate(aerodynamics.alpha1, aerodynamics.Czwy1, alpha)
@@ -124,42 +131,54 @@ def get_Cz(alpha, beta, drn, dail, dnos, Wx, Wy, V, l):
 
 
 def get_Mx(alpha, beta, fi, drn, dail, dnos, Wx, Wy, V, l):
-    mx = csaps(
-        [aerodynamics.fi2, aerodynamics.alpha1, aerodynamics.beta1],
+    interpmx = RegularGridInterpolator(
+        (aerodynamics.fi2, aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.mx1,
-        [fi, alpha, beta],
-        smooth=1.0 - 10**-5,
-    ).flatten()
-    mx0 = csaps(
-        [aerodynamics.fi2, aerodynamics.alpha1, aerodynamics.beta1],
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    mx = interpmx((fi, alpha, beta))
+    interpmx0 = RegularGridInterpolator(
+        (aerodynamics.fi2, aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.mx1,
-        [0, alpha, beta],
-        smooth=1.0 - 10**-5,
-    ).flatten()
-    mx_nos = csaps(
-        [aerodynamics.alpha2, aerodynamics.beta1],
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    mx0 = interpmx0((0, alpha, beta))
+    interpmx_nos = RegularGridInterpolator(
+        (aerodynamics.alpha2, aerodynamics.beta1),
         aerodynamics.mx_nos1,
-        [alpha, beta],
-        smooth=1.0 - 1.0e-5,
-    ).flatten()
-    mxdel = csaps(
-        [aerodynamics.alpha1, aerodynamics.beta1],
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    mx_nos = interpmx_nos((alpha, beta))
+    interpmxdel = RegularGridInterpolator(
+        (aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.mxdel20,
-        [alpha, beta],
-        smooth=1.0 - 1.0e-5,
-    ).flatten()
-    mxdel_nos = csaps(
-        [aerodynamics.alpha2, aerodynamics.beta1],
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    mxdel = interpmxdel((alpha, beta))
+    interpmxdel_nos = RegularGridInterpolator(
+        (aerodynamics.alpha2, aerodynamics.beta1),
         aerodynamics.mxdel20_nos,
-        [alpha, beta],
-        smooth=1.0 - 1.0e-5,
-    ).flatten()
-    mxdrn = csaps(
-        [aerodynamics.alpha1, aerodynamics.beta1],
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    mxdel_nos = interpmxdel_nos((alpha, beta))
+    interpmxdrn = RegularGridInterpolator(
+        (aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.mxdrn30,
-        [alpha, beta],
-        smooth=1.0 - 1.0e-5,
-    ).flatten()
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    mxdrn = interpmxdrn((alpha, beta))
     dmxbt = pchip_interpolate(aerodynamics.alpha1, aerodynamics.dmxbt1, alpha)
     mxwx1 = pchip_interpolate(aerodynamics.alpha1, aerodynamics.mxwx1, alpha)
     mxwx2 = pchip_interpolate(aerodynamics.alpha2, aerodynamics.dmxwx_nos1, alpha)
@@ -183,42 +202,47 @@ def get_Mx(alpha, beta, fi, drn, dail, dnos, Wx, Wy, V, l):
 
 
 def get_My(alpha, beta, fi, drn, dail, dnos, Wx, Wy, V, l):
-    my = csaps(
-        [aerodynamics.fi2, aerodynamics.alpha1, aerodynamics.beta1],
+    interpmy = RegularGridInterpolator(
+        (aerodynamics.fi2, aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.my1,
-        [fi, alpha, beta],
-        smooth=1.0 - 10**-5,
-    ).flatten()
-    my0 = csaps(
-        [aerodynamics.fi2, aerodynamics.alpha1, aerodynamics.beta1],
-        aerodynamics.my1,
-        [0, alpha, beta],
-        smooth=1.0 - 10**-5,
-    ).flatten()
-    my_nos = csaps(
-        [aerodynamics.alpha2, aerodynamics.beta1],
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    my = interpmy((fi, alpha, beta))
+    my0 = interpmy((0, alpha, beta))
+    interpmy_nos = RegularGridInterpolator(
+        (aerodynamics.alpha2, aerodynamics.beta1),
         aerodynamics.my_nos1,
-        [alpha, beta],
-        smooth=1.0 - 1.0e-5,
-    ).flatten()
-    mydel = csaps(
-        [aerodynamics.alpha1, aerodynamics.beta1],
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    my_nos = interpmy_nos((alpha, beta))
+    interpmydel = RegularGridInterpolator(
+        (aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.mydel20,
-        [alpha, beta],
-        smooth=1.0 - 1.0e-5,
-    ).flatten()
-    mydel_nos = csaps(
-        [aerodynamics.alpha2, aerodynamics.beta1],
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    mydel = interpmydel((alpha, beta))
+    interpmydel_nos = RegularGridInterpolator(
+        (aerodynamics.alpha2, aerodynamics.beta1),
         aerodynamics.mydel20_nos,
-        [alpha, beta],
-        smooth=1.0 - 1.0e-5,
-    ).flatten()
-    mydrn = csaps(
-        [aerodynamics.alpha1, aerodynamics.beta1],
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    mydel_nos = interpmydel_nos((alpha, beta))
+    interpmydrn = RegularGridInterpolator(
+        (aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.mydrn30,
-        [alpha, beta],
-        smooth=1.0 - 1.0e-5,
-    ).flatten()
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    mydrn = interpmydrn((alpha, beta))
     dmybt = pchip_interpolate(aerodynamics.alpha1, aerodynamics.dmybt1, alpha)
     mywx1 = pchip_interpolate(aerodynamics.alpha1, aerodynamics.mywx1, alpha)
     mywx2 = pchip_interpolate(aerodynamics.alpha2, aerodynamics.dmywx_nos1, alpha)
@@ -242,36 +266,32 @@ def get_My(alpha, beta, fi, drn, dail, dnos, Wx, Wy, V, l):
 
 
 def get_Mz(alpha, beta, fi, dnos, Wz, V, ba, sb):
-    mz = csaps(
-        [aerodynamics.fi1, aerodynamics.alpha1, aerodynamics.beta1],
+    interpmz = RegularGridInterpolator(
+        (aerodynamics.fi1, aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.mz1,
-        [fi, alpha, beta],
-        smooth=1.0 - 10**-5,
-    ).flatten()
-    mz0 = csaps(
-        [aerodynamics.fi1, aerodynamics.alpha1, aerodynamics.beta1],
-        aerodynamics.mz1,
-        [0, alpha, beta],
-        smooth=1.0 - 10**-5,
-    ).flatten()
-    mz_nos = csaps(
-        [aerodynamics.alpha2, aerodynamics.beta1],
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    mz = interpmz((fi, alpha, beta))
+    mz0 = interpmz((0, alpha, beta))
+    interpmz_nos = RegularGridInterpolator(
+        (aerodynamics.alpha2, aerodynamics.beta1),
         aerodynamics.mz_nos1,
-        [alpha, beta],
-        smooth=1.0 - 10**-5,
-    ).flatten()
-    dmz = csaps(
-        aerodynamics.alpha1,
-        aerodynamics.dmz1,
-        alpha,
-        smooth=1.0 - 10**-5,
-    ).flatten()
-    dmz_ds = csaps(
-        [aerodynamics.alpha1, aerodynamics.fi3],
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    mz_nos = interpmz_nos((alpha, beta))
+    dmz = pchip_interpolate(aerodynamics.alpha1, aerodynamics.dmz1, -0)
+    interpdmz_ds = RegularGridInterpolator(
+        (aerodynamics.alpha1, aerodynamics.fi3),
         aerodynamics.dmz_ds1,
-        [alpha, fi],
-        smooth=1.0 - 10**-5,
-    ).flatten()
+        method="linear",
+        bounds_error=False,
+        fill_value=None,
+    )
+    dmz_ds = interpdmz_ds((alpha, fi))
     mzwz1 = pchip_interpolate(aerodynamics.alpha1, aerodynamics.mzwz1, alpha)
     mzwz2 = pchip_interpolate(aerodynamics.alpha2, aerodynamics.dmzwz_nos1, alpha)
     dmz_sb = pchip_interpolate(aerodynamics.alpha1, aerodynamics.dmz_sb1, alpha)
@@ -288,9 +308,15 @@ def get_Mz(alpha, beta, fi, dnos, Wz, V, ba, sb):
     )
 
 
-# cy = get_Cy(3, 0.1, 0.1, 0, 0.5, 500, 3.45, 0)
-# cx = get_Cx(3, 0.1, 0.1, 0, 0.5, 500, 3.45, 0)
-# cz = get_Cz(3, 0.1, 0.1, 0.05, 0, 0.02, 0.04, 500, 5.4)
-# mx = get_Mx(0.1, 0.1, 0.1, 0.04, 0.0125, 0, 0.0034, 0.932, 432, 5.4)
-# my = get_My(0.1, 0.1, 0.1, 0.04, 0.0125, 0, 0.0034, 0.932, 432, 5.4)
-# mz = get_Mz(0.1, 0.13, 0.032, 0, 0.32, 343, 5.4, 100)
+cy = get_Cy(1, 0.1, 0.1, 0, 0.5, 500, 3.45, 0)
+cx = get_Cx(1, 0.1, 0.1, 0, 0.5, 500, 3.45, 0)
+cz = get_Cz(1, 0.1, 0.1, 0.05, 0, 0.02, 0.04, 500, 5.4)
+mx = get_Mx(0.1, 0.1, 0.1, 0.04, 0.0125, 0, 0.0034, 0.932, 432, 5.4)
+my = get_My(0.1, 0.1, 0.1, 0.04, 0.0125, 0, 0.0034, 0.932, 432, 5.4)
+mz = get_Mz(0.1, 0.13, 0.032, 0, 0.32, 343, 5.4, 100)
+print(f"cy = {cy} ")
+print(f"cx = {cx} ")
+print(f"cz = {cz} ")
+print(f"mx = {mx} ")
+print(f"my = {my} ")
+print(f"mz = {mz} ")
