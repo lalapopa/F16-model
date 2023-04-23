@@ -18,35 +18,26 @@ theta0 = np.radians(0)
 stab0 = np.radians(0)
 dstab0 = np.radians(10)
 Pa0 = 0
-x0 = np.array(
-    [
-        Ox0,
-        Oy0,
-        wz0,
-        Vx0,
-        Vy0,
-        theta0,
-        stab0,
-        dstab0,
-        Pa0,
-    ]
-)
+x0 = States(Ox0, Oy0, Vx0, Vy0, wz0, theta0, stab0, dstab0, Pa0)
 
 # Control Define
 stab_act = np.radians(utils.control.step_function(t0, dt, tn, 0, -10))
 throttle_act = np.radians(utils.control.step_function(t0, dt, tn, 0, 0))
-u = np.stack((stab_act, throttle_act), axis=-1)
+u = np.zeros(n, dtype=np.object)
+
+u = [Control(stab_act[i], throttle_act[i]) for i, _ in enumerate(u)] 
+
 
 # Calculate all state
+x = []
 x = np.zeros(n, dtype=np.object)
 x[0] = x0
 for i in range(1, n):
-    next_state = dt * ODE_3DoF.solve(x[i - 1], u[i - 1])
-    x[i] = x[i - 1] + next_state
-    print(x[i])
+    x[i] = x[i - 1] + dt * ODE_3DoF.solve(x[i - 1], u[i - 1])
     print(t0 + dt * i)
+
 print(len(x), len(u))
-# print(x[0].get("theta"), x[-1].get("theta"))
+print(x[0].theta, x[-1].theta)
 # # Plotting
 # fig = plt.figure()
 #
