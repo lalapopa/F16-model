@@ -1,6 +1,6 @@
-from math import cos, sin 
+from math import cos, sin
 
-import utils
+import utils.cs_transform
 import model
 import data
 from data.thrust import get_thrust
@@ -47,12 +47,8 @@ def solve(x, u):
         Ox=float(cos(x.theta) * x.Vx - sin(x.theta) * x.Vy),
         Oy=float(sin(x.theta) * x.Vx + cos(x.theta) * x.Vy),
         wz=float(MRz / data.plane.Jz),
-        Vx=float(
-            x.wz * x.Vy - data.environment.g * sin(x.theta) + Rx / data.plane.m
-        ),
-        Vy=float(
-            -x.wz * x.Vx - data.environment.g * cos(x.theta) + Ry / data.plane.m
-        ),
+        Vx=float(x.wz * x.Vy - data.environment.g * sin(x.theta) + Rx / data.plane.m),
+        Vy=float(-x.wz * x.Vx - data.environment.g * cos(x.theta) + Ry / data.plane.m),
         theta=float(x.wz),
         stab=float(min(max(x.dstab, -data.plane.maxabsdstab), data.plane.maxabsdstab)),
         dstab=float(

@@ -1,26 +1,24 @@
-import data._aerodynamics as aerodynamics
 import numpy as np
-from scipy.interpolate import pchip_interpolate, RegularGridInterpolator
+from scipy.interpolate import pchip_interpolate
+
+import data._aerodynamics as aerodynamics
+from utils.interpolator import Interpolator
 
 
-def get_Cy(alpha, beta, fi, dnos, Wz, V, ba, sb):
-    interpCy = RegularGridInterpolator(
+def get_Cy(alpha, beta, fi, dnos, Wz, V, ba, sb, interp_method="linear"):
+    interpCy = Interpolator(
         (aerodynamics.fi1, aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.Cy1,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        method=interp_method,
     )
-    Cy = interpCy((fi, alpha, beta))
-    Cy0 = interpCy((0, alpha, beta))
-    interpCy_nos = RegularGridInterpolator(
+    Cy = interpCy.get_value((fi, alpha, beta), smooth=1.0 - 10**-6)
+    Cy0 = interpCy.get_value((0, alpha, beta), smooth=1.0 - 10**-6)
+    interpCy_nos = Interpolator(
         (aerodynamics.alpha2, aerodynamics.beta1),
         aerodynamics.Cy_nos1,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        method=interp_method,
     )
-    Cy_nos = interpCy_nos((alpha, beta))
+    Cy_nos = interpCy_nos.get_value((alpha, beta), smooth=1.0 - 10**-6)
     Cywz = pchip_interpolate(
         aerodynamics.alpha1, aerodynamics.Cywz1, alpha
     ) + pchip_interpolate(aerodynamics.alpha2, aerodynamics.dCywz_nos1, alpha) * (
@@ -36,24 +34,20 @@ def get_Cy(alpha, beta, fi, dnos, Wz, V, ba, sb):
     )
 
 
-def get_Cx(alpha, beta, fi, dnos, Wz, V, ba, sb):
-    interpCx = RegularGridInterpolator(
+def get_Cx(alpha, beta, fi, dnos, Wz, V, ba, sb, interp_method="linear"):
+    interpCx = Interpolator(
         (aerodynamics.fi1, aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.Cx1,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        method=interp_method,
     )
-    Cx = interpCx((fi, alpha, beta))
-    Cx0 = interpCx((0, alpha, beta))
-    interpCx_nos = RegularGridInterpolator(
+    Cx = interpCx.get_value((fi, alpha, beta))
+    Cx0 = interpCx.get_value((0, alpha, beta))
+    interpCx_nos = Interpolator(
         (aerodynamics.alpha2, aerodynamics.beta1),
-        aerodynamics.Cy_nos1,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        aerodynamics.Cx_nos1,
+        method=interp_method,
     )
-    Cx_nos = interpCx_nos((alpha, beta))
+    Cx_nos = interpCx_nos.get_value((alpha, beta))
     Cxwz = pchip_interpolate(
         aerodynamics.alpha1, aerodynamics.Cxwz1, alpha
     ) + pchip_interpolate(aerodynamics.alpha2, aerodynamics.dCxwz_nos1, alpha) * (
@@ -69,47 +63,37 @@ def get_Cx(alpha, beta, fi, dnos, Wz, V, ba, sb):
     )
 
 
-def get_Cz(alpha, beta, drn, dail, dnos, Wx, Wy, V, l):
-    interpCz = RegularGridInterpolator(
+def get_Cz(alpha, beta, drn, dail, dnos, Wx, Wy, V, l, interp_method="linear"):
+    interpCz = Interpolator(
         (aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.Cz1,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        method=interp_method,
     )
-    Cz = interpCz((alpha, beta))
-    interpCz_nos = RegularGridInterpolator(
+    Cz = interpCz.get_value((alpha, beta))
+    interpCz_nos = Interpolator(
         (aerodynamics.alpha2, aerodynamics.beta1),
         aerodynamics.Cz_nos1,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        method=interp_method,
     )
-    Cz_nos = interpCz_nos((alpha, beta))
-    interpCzdel = RegularGridInterpolator(
+    Cz_nos = interpCz_nos.get_value((alpha, beta))
+    interpCzdel = Interpolator(
         (aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.Czdel20,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        method=interp_method,
     )
-    Czdel = interpCzdel((alpha, beta))
-    interpCzdel_nos = RegularGridInterpolator(
+    Czdel = interpCzdel.get_value((alpha, beta))
+    interpCzdel_nos = Interpolator(
         (aerodynamics.alpha2, aerodynamics.beta1),
         aerodynamics.Czdel20_nos,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        method=interp_method,
     )
-    Czdel_nos = interpCzdel_nos((alpha, beta))
-    interpCzdrn = RegularGridInterpolator(
+    Czdel_nos = interpCzdel_nos.get_value((alpha, beta))
+    interpCzdrn = Interpolator(
         (aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.Czdrn30,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        method=interp_method,
     )
-    Czdrn = interpCzdrn((alpha, beta))
+    Czdrn = interpCzdrn.get_value((alpha, beta))
     Czwx1 = pchip_interpolate(aerodynamics.alpha1, aerodynamics.Czwx1, alpha)
     Czwx2 = pchip_interpolate(aerodynamics.alpha2, aerodynamics.dCzwx_nos1, alpha)
     Czwy1 = pchip_interpolate(aerodynamics.alpha1, aerodynamics.Czwy1, alpha)
@@ -130,55 +114,38 @@ def get_Cz(alpha, beta, drn, dail, dnos, Wx, Wy, V, l):
     )
 
 
-def get_Mx(alpha, beta, fi, drn, dail, dnos, Wx, Wy, V, l):
-    interpmx = RegularGridInterpolator(
+def get_Mx(alpha, beta, fi, drn, dail, dnos, Wx, Wy, V, l, interp_method="linear"):
+    interpmx = Interpolator(
         (aerodynamics.fi2, aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.mx1,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        method=interp_method,
     )
-    mx = interpmx((fi, alpha, beta))
-    interpmx0 = RegularGridInterpolator(
-        (aerodynamics.fi2, aerodynamics.alpha1, aerodynamics.beta1),
-        aerodynamics.mx1,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
-    )
-    mx0 = interpmx0((0, alpha, beta))
-    interpmx_nos = RegularGridInterpolator(
+    mx = interpmx.get_value((fi, alpha, beta))
+    mx0 = interpmx.get_value((0, alpha, beta))
+    interpmx_nos = Interpolator(
         (aerodynamics.alpha2, aerodynamics.beta1),
         aerodynamics.mx_nos1,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        method=interp_method,
     )
-    mx_nos = interpmx_nos((alpha, beta))
-    interpmxdel = RegularGridInterpolator(
+    mx_nos = interpmx_nos.get_value((alpha, beta))
+    interpmxdel = Interpolator(
         (aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.mxdel20,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        method=interp_method,
     )
-    mxdel = interpmxdel((alpha, beta))
-    interpmxdel_nos = RegularGridInterpolator(
+    mxdel = interpmxdel.get_value((alpha, beta))
+    interpmxdel_nos = Interpolator(
         (aerodynamics.alpha2, aerodynamics.beta1),
         aerodynamics.mxdel20_nos,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        method=interp_method,
     )
-    mxdel_nos = interpmxdel_nos((alpha, beta))
-    interpmxdrn = RegularGridInterpolator(
+    mxdel_nos = interpmxdel_nos.get_value((alpha, beta))
+    interpmxdrn = Interpolator(
         (aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.mxdrn30,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        method=interp_method,
     )
-    mxdrn = interpmxdrn((alpha, beta))
+    mxdrn = interpmxdrn.get_value((alpha, beta))
     dmxbt = pchip_interpolate(aerodynamics.alpha1, aerodynamics.dmxbt1, alpha)
     mxwx1 = pchip_interpolate(aerodynamics.alpha1, aerodynamics.mxwx1, alpha)
     mxwx2 = pchip_interpolate(aerodynamics.alpha2, aerodynamics.dmxwx_nos1, alpha)
@@ -201,48 +168,38 @@ def get_Mx(alpha, beta, fi, drn, dail, dnos, Wx, Wy, V, l):
     )
 
 
-def get_My(alpha, beta, fi, drn, dail, dnos, Wx, Wy, V, l):
-    interpmy = RegularGridInterpolator(
+def get_My(alpha, beta, fi, drn, dail, dnos, Wx, Wy, V, l, interp_method="linear"):
+    interpmy = Interpolator(
         (aerodynamics.fi2, aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.my1,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        method=interp_method,
     )
-    my = interpmy((fi, alpha, beta))
-    my0 = interpmy((0, alpha, beta))
-    interpmy_nos = RegularGridInterpolator(
+    my = interpmy.get_value((fi, alpha, beta))
+    my0 = interpmy.get_value((0, alpha, beta))
+    interpmy_nos = Interpolator(
         (aerodynamics.alpha2, aerodynamics.beta1),
         aerodynamics.my_nos1,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        method=interp_method,
     )
-    my_nos = interpmy_nos((alpha, beta))
-    interpmydel = RegularGridInterpolator(
+    my_nos = interpmy_nos.get_value((alpha, beta))
+    interpmydel = Interpolator(
         (aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.mydel20,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        method=interp_method,
     )
-    mydel = interpmydel((alpha, beta))
-    interpmydel_nos = RegularGridInterpolator(
+    mydel = interpmydel.get_value((alpha, beta))
+    interpmydel_nos = Interpolator(
         (aerodynamics.alpha2, aerodynamics.beta1),
         aerodynamics.mydel20_nos,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        method=interp_method,
     )
-    mydel_nos = interpmydel_nos((alpha, beta))
-    interpmydrn = RegularGridInterpolator(
+    mydel_nos = interpmydel_nos.get_value((alpha, beta))
+    interpmydrn = Interpolator(
         (aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.mydrn30,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        method=interp_method,
     )
-    mydrn = interpmydrn((alpha, beta))
+    mydrn = interpmydrn.get_value((alpha, beta))
     dmybt = pchip_interpolate(aerodynamics.alpha1, aerodynamics.dmybt1, alpha)
     mywx1 = pchip_interpolate(aerodynamics.alpha1, aerodynamics.mywx1, alpha)
     mywx2 = pchip_interpolate(aerodynamics.alpha2, aerodynamics.dmywx_nos1, alpha)
@@ -265,33 +222,30 @@ def get_My(alpha, beta, fi, drn, dail, dnos, Wx, Wy, V, l):
     )
 
 
-def get_Mz(alpha, beta, fi, dnos, Wz, V, ba, sb):
-    interpmz = RegularGridInterpolator(
+def get_Mz(alpha, beta, fi, dnos, Wz, V, ba, sb, interp_method="linear"):
+    interpmz = Interpolator(
         (aerodynamics.fi1, aerodynamics.alpha1, aerodynamics.beta1),
         aerodynamics.mz1,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        method=interp_method,
     )
-    mz = interpmz((fi, alpha, beta))
-    mz0 = interpmz((0, alpha, beta))
-    interpmz_nos = RegularGridInterpolator(
+    mz = interpmz.get_value((fi, alpha, beta))
+    mz0 = interpmz.get_value((0, alpha, beta))
+    interpmz_nos = Interpolator(
         (aerodynamics.alpha2, aerodynamics.beta1),
         aerodynamics.mz_nos1,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        method=interp_method,
     )
-    mz_nos = interpmz_nos((alpha, beta))
-    dmz = pchip_interpolate(aerodynamics.alpha1, aerodynamics.dmz1, -0)
-    interpdmz_ds = RegularGridInterpolator(
+    mz_nos = interpmz_nos.get_value((alpha, beta))
+    inerpdmz = Interpolator(
+        aerodynamics.alpha1, aerodynamics.dmz1, method=interp_method
+    )
+    dmz = inerpdmz.get_value(alpha)
+    interpdmz_ds = Interpolator(
         (aerodynamics.alpha1, aerodynamics.fi3),
         aerodynamics.dmz_ds1,
-        method="linear",
-        bounds_error=False,
-        fill_value=None,
+        method=interp_method,
     )
-    dmz_ds = interpdmz_ds((alpha, fi))
+    dmz_ds = interpdmz_ds.get_value((alpha, fi))
     mzwz1 = pchip_interpolate(aerodynamics.alpha1, aerodynamics.mzwz1, alpha)
     mzwz2 = pchip_interpolate(aerodynamics.alpha2, aerodynamics.dmzwz_nos1, alpha)
     dmz_sb = pchip_interpolate(aerodynamics.alpha1, aerodynamics.dmz_sb1, alpha)
@@ -308,15 +262,15 @@ def get_Mz(alpha, beta, fi, dnos, Wz, V, ba, sb):
     )
 
 
-cy = get_Cy(1, 0.1, 0.1, 0, 0.5, 500, 3.45, 0)
-cx = get_Cx(1, 0.1, 0.1, 0, 0.5, 500, 3.45, 0)
-cz = get_Cz(1, 0.1, 0.1, 0.05, 0, 0.02, 0.04, 500, 5.4)
-mx = get_Mx(0.1, 0.1, 0.1, 0.04, 0.0125, 0, 0.0034, 0.932, 432, 5.4)
-my = get_My(0.1, 0.1, 0.1, 0.04, 0.0125, 0, 0.0034, 0.932, 432, 5.4)
-mz = get_Mz(0.1, 0.13, 0.032, 0, 0.32, 343, 5.4, 100)
-print(f"cy = {cy} ")
-print(f"cx = {cx} ")
-print(f"cz = {cz} ")
-print(f"mx = {mx} ")
-print(f"my = {my} ")
-print(f"mz = {mz} ")
+# cy = get_Cy(1, 0.1, 0.1, 0, 0.5, 500, 3.45, 0)
+# cx = get_Cx(1, 0.1, 0.1, 0, 0.5, 500, 3.45, 0)
+# cz = get_Cz(1, 0.1, 0.1, 0.05, 0, 0.02, 0.04, 500, 5.4)
+# mx = get_Mx(0.1, 0.1, 0.1, 0.04, 0.0125, 0, 0.0034, 0.932, 432, 5.4)
+# my = get_My(0.1, 0.1, 0.1, 0.04, 0.0125, 0, 0.0034, 0.932, 432, 5.4)
+# mz = get_Mz(0.1, 0.13, 0.032, 0, 0.32, 343, 5.4, 100)
+# print(f"cy = {cy} ")
+# print(f"cx = {cx} ")
+# print(f"cz = {cz} ")
+# print(f"mx = {mx} ")
+# print(f"my = {my} ")
+# print(f"mz = {mz} ")

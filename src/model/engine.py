@@ -1,3 +1,6 @@
+from scipy.optimize import fsolve
+
+
 def engine_power_level(Pa, throttle_act):
     """Find speed difference of thrust level with respect to:
     :Pa: current thrust %
@@ -27,3 +30,9 @@ def engine_power_level(Pa, throttle_act):
         w_eng = 5
 
     return w_eng * dP
+
+
+def find_correct_thrust_position(control_throttle):
+    func = lambda x: engine_power_level(x, control_throttle)
+    root = fsolve(func, 50)
+    return root.item()
