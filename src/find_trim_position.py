@@ -16,32 +16,20 @@ from example_control import run_sim
 def cost_function(u):
     weight = States(
         Ox=0,
-        Oy=5,
-        Vx=10,
-        Vy=10,
-        wz=10 * 57.3,
-        V=10,
-        alpha=10 * 57.3,
-        theta=10 * 57.3,
+        Oy=1.2,
+        wz=291,
+        theta=15,
+        V=433,
+        alpha=15,
         stab=0,
         dstab=0,
         Pa=0,
     )
-    # Thrust lever limit
-    if u[1] >= 1:
-        u[1] = 1
-    elif u[1] <= 0:
-        u[1] = 0
     u_control = Control(u[0], u[1])
-    t0 = 0
-    dt = 0.02
-    tn = 1
-    t = np.arange(t0, tn + dt, dt)
+
     x0 = States(
         Ox=Ox0,
         Oy=Oy0,
-        Vx=Vx0,
-        Vy=Vy0,
         wz=wz0,
         V=V0,
         alpha=alpha0,
@@ -50,22 +38,13 @@ def cost_function(u):
         dstab=dstab0,
         Pa=find_correct_thrust_position(u_control.throttle),
     )
-    x = np.zeros(len(t), dtype=object)
-    x[0] = x0
-    weights = np.zeros(len(t), dtype=object)
-    for i in range(1, len(t)):
-        step = ODE_3DoF.solve(x0, u_control)
-        if np.isnan(step.wz):
-            return np.inf
-        x[i] = x[i - 1] + dt * step
-    #        weights[i] = np.matmul(weight.to_array(), np.power(step.to_array(), 2))
-    error = np.power(x[-1].to_array() - x0.to_array(), 2)
-    #    error = np.power(step.to_array() - x0.to_array(), 2)
-    return np.matmul(weight.to_array(), error)
+    step = ODE_3DoF.solve(x0, u_control)
+
+    state_in_power = np.power(step.to_array(), 2)
+    return np.matmul(weight.to_array(), state_in_power)
 
 
 def get_level_trim_value(u):
-    print(u)
     run_trim = True
     last_cost = 0
     max_iter = 5
@@ -82,7 +61,6 @@ def get_level_trim_value(u):
         cost = cost_function(out)
         if cost == last_cost or current_iter > max_iter:
             run_trim = False
-        print(f"iter = {current_iter}")
         current_iter += 1
         last_cost = cost
     return u, last_cost, Control(out[0], out[1])
@@ -144,16 +122,15 @@ if __name__ == "__main__":
     # Initial condions
     Ox0 = 0
     Oy0 = 3000
-    Vx0 = 125
-    Vy0 = 0
     V0 = 125
-    alpha0 = 0
+    alpha0 = np.radians(3.1)
     wz0 = np.radians(0)
-    theta0 = np.radians(0)
+    theta0 = np.radians(3.1)
     dstab0 = np.radians(0)
 
-    stab_range = np.radians(np.arange(-5, 5 + 0.5, 0.5))
-    thrust_range = np.arange(0.2, 1 + 0.5, 0.5)
+    stab_range = np.radians(np.arange(-20, 20 + 0.1, 0.5))
+    thrust_range = np.arange(0.2, 1 + 0.1, 0.5)
+
     # thrust_val = 0.25
     # costs = []
     # for i in stab_range:
@@ -168,6 +145,7 @@ if __name__ == "__main__":
     # plt.show()
 
     combinations = make_combination(stab_range, thrust_range)
+    print(combinations)
     logging.info(f"Total combinations = {len(combinations)}")
     combinations, all_costs, all_u_trimed = paralell_trim_find(combinations)
     min_cost_index = np.argmin(all_costs)

@@ -25,7 +25,7 @@ def result(x_array, u_array, time):
 
     plt.subplot(6, 1, 4)
     plt.plot(time, np.degrees([i.theta for i in x_array]), "-b", label=r"$\theta$")
-    #     plt.plot(time, np.degrees([i.alpha for i in x_array]), "--m", label=r"\alpha")
+    plt.plot(time, np.degrees([i.alpha for i in x_array]), "--m", label=r"\alpha")
     plt.grid()
     plt.xlim(time[0], time[-1])
     plt.ylabel(r"$\theta\, \alpha$, deg")
@@ -43,10 +43,10 @@ def result(x_array, u_array, time):
     plt.subplot(6, 1, 6)
     plt.plot(
         time,
-        [i.Vx for i in x_array],
+        [i.V for i in x_array],
         "-b",
     )
-    plt.ylabel("$Vx$, m/s")
+    plt.ylabel("$V$, m/s")
     plt.grid()
     plt.xlim(time[0], time[-1])
     plt.xlabel("t, sec")

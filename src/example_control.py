@@ -12,8 +12,8 @@ CONST_STEP = True
 
 def run_sim(x0, u0):
     t0 = 0
-    dt = 0.01
-    tn = 10
+    dt = 0.02
+    tn = 5
     t = np.arange(t0, tn + dt, dt)
 
     # Control Define
@@ -53,25 +53,24 @@ def run_sim(x0, u0):
 
 
 if __name__ == "__main__":
-    u_trimed = Control(np.radians(-3.8), 0.7)
+    u_trimed = Control(np.radians(-4.41636648174007), 0.24075439651111258)
     Ox0 = 0
     Oy0 = 3000
-    Vx0 = 250
-    Vy0 = 0
+    V0 = 125
+    alpha0 = np.radians(3.1)
     wz0 = np.radians(0)
-    theta0 = np.radians(0)
+    theta0 = np.radians(3.1)
     dstab0 = np.radians(0)
     x0 = States(
         Ox0,
         Oy0,
-        Vx0,
-        Vy0,
         wz0,
         theta0,
+        V0,
+        alpha0,
         u_trimed.stab,
         dstab0,
         find_correct_thrust_position(u_trimed.throttle),
     )
-    print(x0)
     x_result, u_result, t = run_sim(x0, u_trimed)
     utils.plots.result(x_result, u_result, t)

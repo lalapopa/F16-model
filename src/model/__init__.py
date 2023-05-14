@@ -4,13 +4,13 @@ import utils
 
 
 class States:
-    def __init__(self, Ox, Oy, Vx, Vy, wz, theta, stab, dstab, Pa):
+    def __init__(self, Ox, Oy, wz, theta, V, alpha, stab, dstab, Pa):
         self.Ox = Ox  # m
         self.Oy = Oy  # m
-        self.Vx = Vx  # m
-        self.Vy = Vy  # m
         self.wz = wz  # rad/s
         self.theta = theta  # rad
+        self.V = V  # m/s
+        self.alpha = alpha  # rad
         self.stab = stab  # rad
         self.dstab = dstab  # rad/s
         self.Pa = Pa  # 0 to 1
@@ -20,10 +20,10 @@ class States:
             [
                 self.Ox,
                 self.Oy,
-                self.Vx,
-                self.Vy,
                 self.wz,
                 self.theta,
+                self.V,
+                self.alpha,
                 self.stab,
                 self.dstab,
                 self.Pa,
@@ -35,10 +35,10 @@ class States:
             return States(
                 other.Ox + self.Ox,
                 other.Oy + self.Oy,
-                other.Vx + self.Vx,
-                other.Vy + self.Vy,
                 other.wz + self.wz,
                 other.theta + self.theta,
+                other.V + self.V,
+                other.alpha + self.alpha,
                 other.stab + self.stab,
                 other.dstab + self.dstab,
                 other.Pa + self.Pa,
@@ -51,10 +51,10 @@ class States:
             return States(
                 self.Ox * other,
                 self.Oy * other,
-                self.Vx * other,
-                self.Vy * other,
                 self.wz * other,
                 self.theta * other,
+                self.V * other,
+                self.alpha * other,
                 self.stab * other,
                 self.dstab * other,
                 self.Pa * other,
@@ -63,10 +63,10 @@ class States:
             return States(
                 self.Ox * other.Ox,
                 self.Oy * other.Oy,
-                self.Vx * other.Vx,
-                self.Vy * other.Vy,
                 self.wz * other.wz,
                 self.theta * other.theta,
+                self.V * other.V,
+                self.alpha * other.alpha,
                 self.stab * other.stab,
                 self.dstab * other.dstab,
                 self.Pa * other.Pa,
@@ -78,7 +78,7 @@ class States:
         return self.__rmul__(other)
 
     def __repr__(self):
-        return f"Ox = {self.Ox} m;\nOy = {self.Oy} m;\nwz = {self.wz} m/s;\nVx = {self.Vx} m/s;\ntheta = {self.theta};\nstab_pos = {np.degrees(self.stab)} deg;\ndstab = {self.dstab} deg/s;\nthrust = {self.Pa} H?"
+        return f"Ox = {self.Ox} m;\nOy = {self.Oy} m;\nwz = {np.degrees(self.wz)} deg/s;\nV = {self.V};\ntheta = {np.degrees(self.theta)};\nstab_pos = {np.degrees(self.stab)} deg;\ndstab = {np.degrees(self.dstab)} deg/s;\nthrust = {self.Pa} H?"
 
 
 class Control:
