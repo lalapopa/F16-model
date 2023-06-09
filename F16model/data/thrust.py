@@ -1,6 +1,6 @@
-from scipy.interpolate import pchip_interpolate, RegularGridInterpolator
+from scipy.interpolate import RegularGridInterpolator
 
-import data._engine as engine
+import F16model.data._engine as engine
 
 
 def get_thrust(H, M, Pa):

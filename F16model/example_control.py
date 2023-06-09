@@ -1,14 +1,12 @@
 import numpy as np
 import time
 
-import utils.control, utils.plots
-from model import States, Control, ODE_3DoF
-from model.engine import find_correct_thrust_position
+import F16model.utils.control, F16model.utils.plots
+from F16model.model import States, Control, runner
+from F16model.model.engine import find_correct_thrust_position
 
 
-CONST_STEP = True
-
-
+CONST_STEP = False
 def run_sim(x0, u0):
     t0 = 0
     dt = 0.02
@@ -21,33 +19,30 @@ def run_sim(x0, u0):
         throttle_act = utils.control.step_function(t0, dt, tn, 0, u0.throttle)
     else:
         stab_act = np.radians(
-            utils.control.make_step_series(t0, dt, tn, 5, step_time=3, hold_time=1)
+            utils.control.make_step_series(t0, dt, tn, 1, step_time=3, hold_time=2)
         )
-        throttle_act = utils.control.step_function(t0, dt, tn, 0, 0)
+        throttle_act = utils.control.step_function(t0, dt, tn, 0, u0.throttle)
 
-    u = np.zeros(len(t), dtype=object)
-    u = [Control(stab_act[i], throttle_act[i]) for i, _ in enumerate(u)]
+    u = [Control(stab_act[i], throttle_act[i]) for i in range(len(t))]
 
     # Calculate states
     start = time.time()
+    env = runner.Env(x0, dt)
 
-    x_out = np.zeros(len(t), dtype=object)
-    x_out[0] = x0
-    for i in range(1, len(t)):
-        x_out[i] = x_out[i - 1] + dt * ODE_3DoF.solve(x_out[i - 1], u[i - 1])
-        if np.isnan(x_out[i].Ox):
-            x_out[i] = States(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-            break_index = np.where(x_out == 0)[0][0]
-            x_out = x_out[:break_index]
-            u = u[:break_index]
-            t = t[:break_index]
+    for i in range(len(t)):
+        state = env.step(u[i])
+        if not state:
+            print(i)
+            u = u[:i]
+            t = t[:i]
             break
     print(f"Simulation FNISED IN {time.time() - start }s")
-    return x_out, u, t
+    print(len(env.get_states()), len(u), len(t))
+    return env.get_states(), u, t
 
 
 if __name__ == "__main__":
-    u_trimed = Control(np.radians(-4.254907440527097), 0.7570899485191026)
+    u_trimed = Control(np.radians(0), 0.7570899485191026)
     Ox0 = 0
     Oy0 = 9000
     V0 = 325

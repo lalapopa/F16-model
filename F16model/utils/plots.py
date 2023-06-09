@@ -13,7 +13,7 @@ def result(x_array, u_array, time):
     plt.plot(time, np.degrees([i.dstab for i in x_array]), "-b")
     plt.grid()
     plt.xlim(time[0], time[-1])
-    plt.ylabel(r"$dstab_{act}$, deg")
+    plt.ylabel(r"$dstab_{act}$, deg/sec")
 
     plt.subplot(6, 1, 3)
     plt.plot(time, [i.Pa for i in x_array], "-b")
@@ -24,7 +24,8 @@ def result(x_array, u_array, time):
 
     plt.subplot(6, 1, 4)
     plt.plot(time, np.degrees([i.theta for i in x_array]), "-b", label=r"$\theta$")
-    plt.plot(time, np.degrees([i.alpha for i in x_array]), "--m", label=r"\alpha")
+    plt.plot(time, np.degrees([i.alpha for i in x_array]), "--m", label=r"$\alpha$")
+    plt.legend()
     plt.grid()
     plt.xlim(time[0], time[-1])
     plt.ylabel(r"$\theta\, \alpha$, deg")

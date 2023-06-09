@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.interpolate import pchip_interpolate
 
-import data._aerodynamics as aerodynamics
-from utils.interpolator import Interpolator
+import F16model.data._aerodynamics as aerodynamics
+from F16model.utils.interpolator import Interpolator
 
 
 def get_Cy(alpha, beta, fi, dnos, Wz, V, ba, sb, interp_method="linear"):
