@@ -20,13 +20,13 @@ def solve(x, u):
     theta_dot = x.wz
 
     cx = data.get_Cx(
-        x.alpha, 0, x.stab, data.plane.lef, x.wz, x.V, data.plane.bA, data.plane.sb
+        x.alpha, 0, x.stab, data.plane.lef, x.wz, x.V, data.plane.b_a, data.plane.sb
     )
     cy = data.get_Cy(
-        x.alpha, 0, x.stab, data.plane.lef, x.wz, x.V, data.plane.bA, data.plane.sb
+        x.alpha, 0, x.stab, data.plane.lef, x.wz, x.V, data.plane.b_a, data.plane.sb
     )
     mz = data.get_Mz(
-        x.alpha, 0, x.stab, data.plane.lef, x.wz, x.V, data.plane.bA, data.plane.sb
+        x.alpha, 0, x.stab, data.plane.lef, x.wz, x.V, data.plane.b_a, data.plane.sb
     )
 
     X = -q * data.plane.S * cx
@@ -34,7 +34,7 @@ def solve(x, u):
 
     Px = get_thrust(x.Oy, M, x.Pa)
     Py = 0
-    Mz = q * data.plane.S * data.plane.bA * mz
+    Mz = q * data.plane.S * data.plane.b_a * mz
     MPz = 0
 
     Rx = X + Px

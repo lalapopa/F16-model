@@ -2,12 +2,9 @@ import scipy.optimize
 import numpy as np
 import logging
 import datetime
-import matplotlib.pyplot as plt
 
 from model import States, Control, ODE_3DoF
 from model.engine import find_correct_thrust_position
-import utils.plots
-from example_control import run_sim
 
 
 def cost_function(u):

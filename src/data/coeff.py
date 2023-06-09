@@ -261,16 +261,3 @@ def get_Mz(alpha, beta, fi, dnos, Wz, V, ba, sb, interp_method="linear"):
         + dmz_ds
     )
 
-
-# cy = get_Cy(1, 0.1, 0.1, 0, 0.5, 500, 3.45, 0)
-# cx = get_Cx(1, 0.1, 0.1, 0, 0.5, 500, 3.45, 0)
-# cz = get_Cz(1, 0.1, 0.1, 0.05, 0, 0.02, 0.04, 500, 5.4)
-# mx = get_Mx(0.1, 0.1, 0.1, 0.04, 0.0125, 0, 0.0034, 0.932, 432, 5.4)
-# my = get_My(0.1, 0.1, 0.1, 0.04, 0.0125, 0, 0.0034, 0.932, 432, 5.4)
-# mz = get_Mz(0.1, 0.13, 0.032, 0, 0.32, 343, 5.4, 100)
-# print(f"cy = {cy} ")
-# print(f"cx = {cx} ")
-# print(f"cz = {cz} ")
-# print(f"mx = {mx} ")
-# print(f"my = {my} ")
-# print(f"mz = {mz} ")

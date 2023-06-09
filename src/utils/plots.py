@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 
 
 def result(x_array, u_array, time):
-    fig = plt.figure()
     plt.subplot(6, 1, 1)
     plt.plot(time, np.degrees([i.stab for i in u_array]), "-r")
     plt.grid()
@@ -38,7 +37,7 @@ def result(x_array, u_array, time):
     )
     plt.grid()
     plt.xlim(time[0], time[-1])
-    plt.ylabel("$\omega_{z}$, deg/sec")
+    plt.ylabel(r"$\omega_{z}$, deg/sec")
 
     plt.subplot(6, 1, 6)
     plt.plot(

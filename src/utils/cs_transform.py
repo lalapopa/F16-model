@@ -1,4 +1,4 @@
-from math import atan, asin, sin, cos, sin, sqrt
+from math import atan, asin, sin, cos, sqrt
 
 
 def body2wind(Vx, Vy, Vz):

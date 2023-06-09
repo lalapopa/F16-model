@@ -1,7 +1,5 @@
 import numpy as np
 
-import utils
-
 
 class States:
     def __init__(self, Ox, Oy, wz, theta, V, alpha, stab, dstab, Pa):

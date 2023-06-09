@@ -6,7 +6,6 @@ from model import States, Control, ODE_3DoF
 from model.engine import find_correct_thrust_position
 
 
-RUN_CSAPS = False
 CONST_STEP = True
 
 
@@ -35,12 +34,7 @@ def run_sim(x0, u0):
     x_out = np.zeros(len(t), dtype=object)
     x_out[0] = x0
     for i in range(1, len(t)):
-        if RUN_CSAPS:
-            x_out[i] = x_out[i - 1] + dt * ODE_3DoF.solve(
-                x_out[i - 1], u[i - 1], interp_method="csaps"
-            )
-        else:
-            x_out[i] = x_out[i - 1] + dt * ODE_3DoF.solve(x_out[i - 1], u[i - 1])
+        x_out[i] = x_out[i - 1] + dt * ODE_3DoF.solve(x_out[i - 1], u[i - 1])
         if np.isnan(x_out[i].Ox):
             x_out[i] = States(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
             break_index = np.where(x_out == 0)[0][0]
@@ -53,7 +47,7 @@ def run_sim(x0, u0):
 
 
 if __name__ == "__main__":
-    u_trimed = Control(np.radians(-4.254907440527097),0.7570899485191026)
+    u_trimed = Control(np.radians(-4.254907440527097), 0.7570899485191026)
     Ox0 = 0
     Oy0 = 9000
     V0 = 325
