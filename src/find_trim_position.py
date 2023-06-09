@@ -113,7 +113,7 @@ if __name__ == "__main__":
     current_time = datetime.datetime.now().strftime("%y%m%d")
     logging.basicConfig(
         level=logging.DEBUG,
-        filename=f"logs/{current_time}.log",
+        filename=f"./logs/{current_time}.log",
         filemode="a+",
         format="%(asctime)s %(levelname)s %(message)s",
         datefmt="%Y%m%d%H%M%S",
