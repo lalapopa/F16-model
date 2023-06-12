@@ -1,10 +1,9 @@
 import tkinter as tk
 from tkinter import ttk
-from tkinter import filedialog
 from tkinter import messagebox
-from tkinter.messagebox import showinfo
 from PIL import ImageTk, Image
 from functools import partial
+from screeninfo import get_monitors
 import math
 import sys
 
@@ -16,14 +15,16 @@ def menu():
     global V0
     global H0
     global text_box
+    global text_V0
+    global text_H0
 
     root = tk.Tk()
-
     window_setup()
-    init_value_V0 = BoxWidget("V0:")
+
+    init_value_V0 = BoxWidget("V0 = ", 0)
     V0 = init_value_V0.take_number()
 
-    init_value_H0 = BoxWidget("H0:")
+    init_value_H0 = BoxWidget("H0 = ", 1)
     H0 = init_value_H0.take_number()
 
     #     step_size_calc_box = BoxWidget("Шаг расчета H:")
@@ -36,32 +37,43 @@ def menu():
 
     # text_box.insert("end", str(button.invoke()) + "\n")
     play_button_setup()
-    text_box = tk.Text(root, height=15, width=52)
-    text_box.grid()
+    text_box = tk.Text(root, height=10, relief="flat")
+    text_box.configure(state="disabled")
+    text_box.grid(row=4, columnspan=2, padx=10)
 
     #    checkbutton_png.button.grid()
     #    checkbutton_pgf.button.grid()
+
     root.mainloop()
 
 
 def window_setup():
-    root.title("Trim F16")
-    # get the screen dimension
-    screen_width = root.winfo_screenwidth()
-    screen_height = root.winfo_screenheight()
+    global window_width
+    global window_height
 
-    window_width = int(screen_width / 3.2)
-    window_height = int(screen_height / 1.8)
+    root.title("Trim F16")
+
+    screen_width, screen_height = get_monitor_size()
+
+    window_width = int(screen_width / 4.2)
+    window_height = int(screen_height / 2.8)
 
     # find the center point
     center_x = int(screen_width / 2 - window_width / 2)
     center_y = int(screen_height / 2 - window_height / 2)
 
     # set the position of the window to the center of the screen
-    root.geometry(f"{window_width}x{window_height}+{center_x}+{center_y}")
-    root.resizable(False, False)
+    root.geometry(f"{290}x{window_height}")
+    root.resizable(1, 1)
     root.columnconfigure(0, weight=1)
-    root.rowconfigure(1, weight=0)
+    root.columnconfigure(1, weight=1)
+
+
+def get_monitor_size():
+    for m in get_monitors():
+        if m.is_primary:
+            return m.width, m.height
+    return (1920, 1080)
 
 
 def play_button_setup():
@@ -74,49 +86,32 @@ def play_button_setup():
         command=press_button,
     )
     #    play_button.button_icon = button_icon
-    play_button.grid(sticky=tk.N, pady=10)
+    play_button.grid(row=3, columnspan=2, sticky=tk.N, pady=5, padx=5)
     return play_button
 
 
-class CheckbuttonWidget:
-    def __init__(self, text, text_above=None, exe_function=None):
-        self.space = ttk.Frame(root)
-        self.space.grid(ipady=2, sticky="n")
-        if text_above:
-            above_box_text = ttk.Label(self.space, text=str(text_above))
-            above_box_text.grid()
-        self.checkmark_state = tk.IntVar()
-        self.button = ttk.Checkbutton(
-            self.space,
-            text=str(text),
-            variable=self.checkmark_state,
-            command=exe_function,
-            onvalue=1,
-            offvalue=0,
-            width=5,
-        )
-
-
 class BoxWidget:
-    def __init__(self, text):
-        self.space = ttk.Frame(root)
-        self.above_box_text = ttk.Label(self.space, text=str(text))
+    def __init__(self, text, order_number):
+        self.order = order_number
+        self.label = ttk.Label(root, text=str(text))
+        self.label.grid(row=self.order, column=0, padx=5, pady=10, sticky=tk.E)
 
     def take_number(self, float_number=False):
         value = tk.StringVar()
         if float_number:
             vcmd = (
-                self.space.register(partial(self._only_num_valid, float_valid=True)),
+                root.register(partial(self._only_num_valid, float_valid=True)),
                 "%S",
             )
         else:
-            vcmd = (self.space.register(self._only_num_valid), "%S")
+            vcmd = (root.register(self._only_num_valid), "%S")
         box_entry = ttk.Entry(
-            self.space, validate="key", validatecommand=vcmd, textvariable=value
+            root,
+            validate="key",
+            validatecommand=vcmd,
+            textvariable=value,
         )
-        self.space.grid(sticky="w", padx=72)
-        self.above_box_text.grid(sticky="w")
-        box_entry.grid(sticky="w")
+        box_entry.grid(row=self.order, column=1, padx=5, pady=5, sticky=tk.W)
         return value
 
     def _only_num_valid(self, S, float_valid=False):
@@ -127,30 +122,7 @@ class BoxWidget:
 
         if S in valid_symbols:
             return True
-        self.space.bell()
         return False
-
-
-def browser_box():
-    space = ttk.Frame(root)
-    above_text = ttk.Label(space, text="Путь для сохранения:")
-    above_text.grid(sticky="w")
-
-    info = above_text.grid_info()
-    row = info["row"]
-    column = info["column"]
-
-    box_entry = ttk.Entry(space, textvariable=folder_path, width=40)
-    browse_button = ttk.Button(space, text="Browse", command=open_folder_window)
-
-    space.grid()
-    box_entry.grid(row=row + 1, column=column)
-    browse_button.grid(row=row + 1, column=column + 1)
-
-
-def open_folder_window():
-    file_name = filedialog.askdirectory()
-    folder_path.set(file_name)
 
 
 def press_button():
@@ -161,6 +133,7 @@ def press_button():
     if not H0_float:
         return
     u0, alpha, theta = run(V0_float, H0_float)
+    text_box.configure(state="normal")
     text_box.delete(1.0, tk.END)
     text_box.insert(
         1.0, f"{'='*10}\nH0 = {H0_float:.1f} m, V0 = {V0_float:.2f} m/s\n{'='*10}\n"
@@ -169,6 +142,7 @@ def press_button():
         tk.END,
         f"stab = {math.degrees(u0.stab):.4f} degree;\nthrottle = {u0.throttle:.4f} %;\nalpha = {math.degrees(alpha):.4f} degree;\n",
     )
+    text_box.configure(state="disabled")
 
 
 class Converter:
@@ -179,57 +153,10 @@ class Converter:
             Notification.invalid_number()
             return False
 
-    def step_size_box(box):
-        try:
-            ss = float(step_size_input.get().replace(",", "."))
-        except:
-            Notification.step_size_value_error()
-
-        if 0 < ss <= 2:
-            return ss
-        else:
-            Notification.step_size_not_in_range_error()
-            return False
-
 
 class Notification:
     def invalid_number():
         messagebox.showerror("Error", "Введите значение V0 и H0")
-
-    def path_error():
-        messagebox.showerror("Error", "Неверный путь сохранения!")
-
-    def step_size_value_error():
-        messagebox.showerror(
-            "Error",
-            "Неверное значение шага расчета!\nЧисло должно быть десятичным.\nПример: 0.1, 1.5.",
-        )
-
-    def step_size_not_in_range_error():
-        messagebox.showerror("Error", "Диапазон значений шага (0,2]")
-
-    def dont_save_plot_warning():
-        state = messagebox.askquestion(
-            "Warning",
-            "Вы не выбрали сохранение графиков.\nЕсли продолжить графики не будут сохраняться.",
-            icon="warning",
-        )
-        return state
-
-    def pgf_warning():
-        pgf_status = checkbutton_pgf.checkmark_state.get()
-        if pgf_status:
-            user_answer = Notification.run_time_warning()
-            if user_answer == "no":
-                checkbutton_pgf.checkmark_state.set(0)
-
-    def run_time_warning():
-        state = messagebox.askquestion(
-            "Warning",
-            "Файлы в pgf для LaTeX сохраняются очень долго :( \nХочешь сохранить?",
-            icon="warning",
-        )
-        return state
 
 
 if __name__ == "__main__":
