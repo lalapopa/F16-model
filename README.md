@@ -16,4 +16,4 @@
 
 Скачать собранный EXE:
 
-
+[URL](https://github.com/lalapopa/F16-model/releases/tag/v0.00)
