@@ -2,6 +2,7 @@ import scipy.optimize
 import numpy as np
 import logging
 import datetime
+import os 
 
 from .model import States, Control, ODE_3DoF
 from .model.engine import find_correct_thrust_position
@@ -91,9 +92,11 @@ def trim_find(array, init_condition):
 
 def run(V0, Oy0):
     current_time = datetime.datetime.now().strftime("%y%m%d")
+    log_file_name = str(f"./logs/{current_time}.log")
+    os.makedirs(os.path.dirname(log_file_name), exist_ok=True)
     logging.basicConfig(
         level=logging.DEBUG,
-        filename=f"./logs/{current_time}.log",
+        filename=log_file_name,
         filemode="a+",
         format="%(asctime)s %(levelname)s %(message)s",
         datefmt="%Y%m%d%H%M%S",
