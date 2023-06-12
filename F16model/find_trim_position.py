@@ -91,23 +91,12 @@ def trim_find(array, init_condition):
 
 
 def run(V0, Oy0):
-    current_time = datetime.datetime.now().strftime("%y%m%d")
-    log_file_name = str(f"./logs/{current_time}.log")
-    os.makedirs(os.path.dirname(log_file_name), exist_ok=True)
-    logging.basicConfig(
-        level=logging.DEBUG,
-        filename=log_file_name,
-        filemode="a+",
-        format="%(asctime)s %(levelname)s %(message)s",
-        datefmt="%Y%m%d%H%M%S",
-    )
     stab_range = np.radians(np.arange(-20, 20 + 0.1, 1))
     thrust_range = np.arange(0.2, 1 + 0.5, 0.25)
     alpha_range = np.radians(np.arange(-10, 10 + 0.1, 2))
     combinations = np.array(
         np.meshgrid(stab_range, thrust_range, alpha_range)
     ).T.reshape(-1, 3)
-
     logging.info(f"Total combinations = {len(combinations)}")
     init_condition = (V0, Oy0)
     (
@@ -125,6 +114,16 @@ def run(V0, Oy0):
 
 
 if __name__ == "__main__":
+    current_time = datetime.datetime.now().strftime("%y%m%d")
+    log_file_name = str(f"./logs/{current_time}.log")
+    os.makedirs(os.path.dirname(log_file_name), exist_ok=True)
+    logging.basicConfig(
+        level=logging.DEBUG,
+        filename=log_file_name,
+        filemode="a+",
+        format="%(asctime)s %(levelname)s %(message)s",
+        datefmt="%Y%m%d%H%M%S",
+    )
     # Initial condions
     H = 10000
     V = 150

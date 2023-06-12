@@ -16,17 +16,18 @@ def menu():
     global text_box
     global text_V0
     global text_H0
+    global run_button
 
     root = tk.Tk()
     window_setup()
 
-    init_value_V0 = BoxWidget("V0 = ", 0)
+    init_value_V0 = BoxWidget("V0 [m/s] = ", 0)
     V0 = init_value_V0.take_number()
 
-    init_value_H0 = BoxWidget("H0 = ", 1)
+    init_value_H0 = BoxWidget("H0 [m] = ", 1)
     H0 = init_value_H0.take_number()
 
-    play_button_setup()
+    run_button = play_button_setup()
     text_box = tk.Text(root, height=10, relief="flat")
     text_box.configure(state="disabled")
     text_box.grid(row=4, columnspan=2, padx=10)
@@ -63,7 +64,7 @@ def play_button_setup():
     play_button = ttk.Button(
         root,
         text="Запустить",
-        command=threading.Thread(target=press_button).start,
+        command=lambda : threading.Thread(target=press_button).start(),
     )
     play_button.grid(row=3, columnspan=2, sticky=tk.N, pady=5, padx=5)
     return play_button
@@ -111,12 +112,15 @@ def press_button():
     H0_float = Converter.float_number(H0)
     if not H0_float:
         return
+    run_button["state"] = tk.DISABLED
+
     run_text = f"Running ..."
     write_to_textbox(text_box, run_text)
     u0, alpha, _ = run(V0_float, H0_float)
     out_text = f"{'='*10}\nH0 = {H0_float:.1f} m, V0 = {V0_float:.2f} m/s\n{'='*10}\n"
     out_text += f"stab = {math.degrees(u0.stab):.4f} degree;\nthrottle = {u0.throttle:.4f} %;\nalpha = {math.degrees(alpha):.4f} degree;\n"
     write_to_textbox(text_box, out_text)
+    run_button["state"] = tk.NORMAL
 
 def write_to_textbox(tb, text):
     tb.configure(state="normal")
