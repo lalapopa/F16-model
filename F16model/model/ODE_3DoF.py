@@ -2,14 +2,14 @@ from math import cos, sin
 
 from F16model.utils.cs_transform import wind2body
 import F16model.model as model
-from F16model.data import thrust, plane, environment, coeff
+from F16model.data import thrust, plane, atmosphere, coeff
 
 
 def solve(x, u):
     Vx, Vy, _ = wind2body(x.V, x.alpha, 0)
 
-    rho = environment.get_density(x.Oy)
-    a = environment.get_speed_of_sound(x.Oy)
+    rho = atmosphere.get_density(x.Oy)
+    a = atmosphere.get_speed_of_sound(x.Oy)
     M = x.V / a
     q = (rho * (x.V**2)) / 2
 
@@ -37,8 +37,8 @@ def solve(x, u):
     control_stab = min(max(u.stab, -plane.maxabsstab), plane.maxabsstab)
     control_throttle = min(max(u.throttle, plane.minthrottle), plane.maxthrottle)
 
-    Vx_dot = x.wz * Vy - environment.g * sin(x.theta) + Rx / plane.m
-    Vy_dot = -x.wz * Vx - environment.g * cos(x.theta) + Ry / plane.m
+    Vx_dot = x.wz * Vy - atmosphere.g * sin(x.theta) + Rx / plane.m
+    Vy_dot = -x.wz * Vx - atmosphere.g * cos(x.theta) + Ry / plane.m
 
     V_dot = (Vx * Vx_dot - Vy * Vy_dot) / x.V
     alpha_dot = (-Vx * Vy_dot + Vy * Vx_dot) / (Vx**2 + Vy**2)

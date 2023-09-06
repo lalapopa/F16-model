@@ -2,10 +2,10 @@ import scipy.optimize
 import numpy as np
 import logging
 import datetime
-import os 
+import os
 
-from .model import States, Control, ODE_3DoF
-from .model.engine import find_correct_thrust_position
+from F16model.model import States, Control, ODE_3DoF
+from F16model.model.engine import find_correct_thrust_position
 
 
 class Cost:
