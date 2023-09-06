@@ -6,7 +6,7 @@ import math
 import threading
 from screeninfo import get_monitors
 
-from F16model.find_trim_position import run
+from F16model.utils.find_trim_position import run
 
 
 def menu():
@@ -64,7 +64,7 @@ def play_button_setup():
     play_button = ttk.Button(
         root,
         text="Запустить",
-        command=lambda : threading.Thread(target=press_button).start(),
+        command=lambda: threading.Thread(target=press_button).start(),
     )
     play_button.grid(row=3, columnspan=2, sticky=tk.N, pady=5, padx=5)
     return play_button
@@ -122,13 +122,13 @@ def press_button():
     write_to_textbox(text_box, out_text)
     run_button["state"] = tk.NORMAL
 
+
 def write_to_textbox(tb, text):
     tb.configure(state="normal")
     tb.delete(1.0, tk.END)
-    tb.insert(
-        1.0, text
-    )
+    tb.insert(1.0, text)
     tb.configure(state="disabled")
+
 
 class Converter:
     def float_number(box):
