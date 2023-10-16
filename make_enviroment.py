@@ -9,15 +9,29 @@ class Env:
 
     """RL like enviroment for F16model"""
 
-    def __init__(self, init_state: States):
+    def __init__(self, init_state, init_control):
         self.dt = 0.02  # simulation step
         self.tn = 20  # finish time
         self.clock = 0
         self.done = False
-        self.init_state = init_state
-        self.model = interface.F16model(init_state, self.dt)
+        self.init_state = States(
+            Ox=init_state[0],
+            Oy=init_state[1],
+            wz=init_state[2],
+            theta=init_state[3],
+            V=init_state[4],
+            alpha=init_state[5],
+            stab=init_control[0],
+            dstab=np.radians(0),
+            Pa=find_correct_thrust_position(init_control[1]),
+        )
+        self.model = interface.F16model(self.init_state, self.dt)
 
-    def step(self, action: Control):
+    def step(self, action):
+        if isinstance(action, np.ndarray):
+            action = Control(action[0], action[1])
+        else:
+            raise ValueError(f"Action has type '{type(action)}' should be np.array")
         state = self.model.step(action)
         self.clock += self.dt
         reward = 0.001
@@ -28,10 +42,13 @@ class Env:
         if not state:
             reward -= 50
             self.done = True
-        return state, reward, self.done, self.clock
+        out_state = state.to_array()[
+            0:6
+        ]  # dont need return last 3 states its only for internal use
+        return out_state, reward, self.done, self.clock
 
     def reset(self):
-        init_state = self.model.reset()
+        init_state = self.model.reset()[0:6]  # same here we dont need 3 last states
         return init_state
 
 
@@ -42,9 +59,12 @@ def run_episode(init_state: States, max_steps=2000):
     rewards = []
     times = []
     for t in range(1, max_steps):
-        action = get_action()
-        state, reward, done, current_time = env.step(action)
-        if state:
+        # action = get_action()
+        action = np.array([0, 0])
+        state, reward, done, current_time = env.step(
+            action
+        )  # give as numpy array or list
+        if state.all():
             states.append(state)
             rewards.append(reward)
             actions.append(action)

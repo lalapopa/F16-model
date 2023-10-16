@@ -20,5 +20,5 @@ class F16model:
         return next_state
 
     def reset(self):
-        self.states_prev = self.init_state
+        self.states_prev = self.init_state.to_array()
         return self.states_prev
