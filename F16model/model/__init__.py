@@ -81,7 +81,7 @@ class States:
 
 class Control:
     def __init__(self, stab, throttle):
-        self.stab = stab  # rad
+        self.stab = stab  # rad # from -25 to 25
         self.throttle = throttle  # from 0 to 1
 
     def to_array(self):
