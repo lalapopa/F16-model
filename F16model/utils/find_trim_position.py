@@ -25,7 +25,7 @@ class Cost:
         )
 
     def calculate(self, u):
-        u_control = Control(u[0], u[1])
+        u_control = Control(u[0], u[1]) # TODO: clean up work with custom class
         x0 = States(
             Ox=0,
             Oy=self.H,

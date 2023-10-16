@@ -1,5 +1,4 @@
 import numpy as np
-import time
 
 from F16model.model import States, Control, interface
 from F16model.model.engine import find_correct_thrust_position
@@ -31,7 +30,7 @@ class Env:
             self.done = True
         return state, reward, self.done, self.clock
 
-    def reset():
+    def reset(self):
         init_state = self.model.reset()
         return init_state
 
