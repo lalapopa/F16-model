@@ -9,7 +9,7 @@ class Env:
 
     """RL like enviroment for F16model"""
 
-    def __init__(self, init_state, init_control):
+    def __init__(self, init_state: np.ndarray, init_control: np.ndarray):
         self.dt = 0.02  # simulation step
         self.tn = 20  # finish time
         self.clock = 0
@@ -26,6 +26,8 @@ class Env:
             Pa=find_correct_thrust_position(init_control[1]),
         )
         self.model = interface.F16model(self.init_state, self.dt)
+        self.total_return = 0
+        self.episode_length = 0
 
     def step(self, action):
         if isinstance(action, np.ndarray):
@@ -34,26 +36,38 @@ class Env:
             raise ValueError(f"Action has type '{type(action)}' should be np.array")
         state = self.model.step(action)
         self.clock += self.dt
-        reward = 0.001
+        reward = 0 
+        reward = -sum(state.to_array() - self.init_state.to_array())*0.01
 
-        if self.clock > self.tn:
+        if self.clock >= self.tn:
             reward += 50
             self.done = True
-        if not state:
+
+        if state.to_array().any() == np.nan:
             reward -= 50
             self.done = True
+
+        self.episode_length += 1
+        self.total_return += reward
+        info = {
+            "episode_length": self.episode_length,
+            "total_return": self.total_return
+        }
+
         out_state = state.to_array()[
             0:6
         ]  # dont need return last 3 states its only for internal use
-        return out_state, reward, self.done, self.clock
+        return out_state, reward, self.done, self.clock, info
 
     def reset(self):
         init_state = self.model.reset()[0:6]  # same here we dont need 3 last states
+        self.total_return = 0
+        self.episode_length = 0
         return init_state
 
 
-def run_episode(init_state: States, max_steps=2000):
-    env = Env(init_state)
+def run_episode(init_state, init_action, max_steps=2000):
+    env = Env(init_state, init_action)
     actions = []
     states = []
     rewards = []
@@ -63,7 +77,7 @@ def run_episode(init_state: States, max_steps=2000):
         action = np.array([0, 0])
         state, reward, done, current_time = env.step(
             action
-        )  # give as numpy array or list
+        )  # give as numpy array 
         if state.all():
             states.append(state)
             rewards.append(reward)
@@ -93,11 +107,11 @@ def get_trimmed_state_control():
         dstab=np.radians(0),
         Pa=find_correct_thrust_position(u_trimmed.throttle),
     )
-    return x0, u_trimmed
+    return x0.to_array(), u_trimmed.to_array()
 
 
 if __name__ == "__main__":
-    x0, _ = get_trimmed_state_control()
-    states, actions, reward, t = run_episode(x0)
+    x0, u0 = get_trimmed_state_control()
+    states, actions, reward, t = run_episode(x0, u0)
     print(f"TOTAL REWARD = {reward}, TOTAL TIME = {t[-1]}")
     utils_plots.result(states, actions, t)
