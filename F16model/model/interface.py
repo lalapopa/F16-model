@@ -14,8 +14,6 @@ class F16model:
 
     def step(self, u_i: Control):
         next_state = self.state_prev + self.dt * solve(self.state_prev, u_i)
-        if np.isnan(next_state.Ox):
-            return False
         self.state_prev = next_state
         return next_state
 
