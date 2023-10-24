@@ -11,7 +11,7 @@ class Env:
 
     def __init__(self, init_state: np.ndarray, init_control: np.ndarray):
         self.dt = 0.02  # simulation step
-        self.tn = 10  # finish time
+        self.tn = 30  # finish time
         self.clock = 0
         self.done = False
         self.init_state = States(
@@ -35,25 +35,27 @@ class Env:
         else:
             raise ValueError(f"Action has type '{type(action)}' should be np.array")
         state = self.model.step(action)
-        reward = 0 
+        reward = 0
 
-        print(f"TIME:{self.clock}| {state}")
+        #        print(f"TIME:{self.clock}| {state}")
         self.clock += self.dt
-        reward = -sum(state.to_array() - self.init_state.to_array())*0.01
+        reward = -sum(state.to_array()[:6] - self.init_state.to_array()[:6]) * 0.01
 
         if self.clock >= self.tn:
             reward += 50
             self.done = True
 
-        if state.to_array().any() == np.nan:
-            reward -= 50
+        if np.radians(-20) < state.alpha < np.radians(45):
+            reward += 0.1
+        else:
+            reward -= 100
             self.done = True
 
         self.episode_length += 1
         self.total_return += reward
         info = {
             "episode_length": self.episode_length,
-            "total_return": self.total_return
+            "total_return": self.total_return,
         }
 
         out_state = state.to_array()[
@@ -78,9 +80,7 @@ def run_episode(init_state, init_action, max_steps=2000):
     for t in range(1, max_steps):
         # action = get_action()
         action = np.array([0, 0])
-        state, reward, done, current_time, _ = env.step(
-            action
-        )  # give as numpy array 
+        state, reward, done, current_time, _ = env.step(action)  # give as numpy array
         if state.all():
             states.append(state)
             rewards.append(reward)

@@ -39,7 +39,7 @@ def run_train(env, agent, ac_model, STATE_ERROR_WEIGHTS, TRACKED):
     list_F, list_G, list_RLS_cov, e_model = [], [], [], []
     U_ref = []
     total_steps = 1
-    max_episode = 5
+    max_episode = 1000
     max_steps = 4000
     excitation_steps = 105
     nan_occurs = False
@@ -56,7 +56,6 @@ def run_train(env, agent, ac_model, STATE_ERROR_WEIGHTS, TRACKED):
             P = np.diag(TRACKED).astype(float)
             Q = np.diag(STATE_ERROR_WEIGHTS)
             X.append(init_condition)
-            print(f"First init condition {init_condition}")
             done = False
             episode_steps = 1
             while not done:
@@ -114,7 +113,7 @@ def run_train(env, agent, ac_model, STATE_ERROR_WEIGHTS, TRACKED):
                     lmbda = agent.value_derivative(x_next_pred, reference=R_sig)
                     grad_actor = np.matmul(dcostdx + agent.gamma * lmbda, B)
                     # print(f"TOTAL GRAD ACTOR = {grad_actor}")
-                    # grad_actor = np.clip(grad_actor, -0.1, 0.1)
+                    grad_actor = np.clip(grad_actor, -0.2, 0.2)
                     # grad_actor  = utils.overactuation_gradient_correction(gradients=grad_actor, actions=action, actions_clipped=action_clipped)
                     agent.update_actor(
                         x,
@@ -146,7 +145,13 @@ def run_train(env, agent, ac_model, STATE_ERROR_WEIGHTS, TRACKED):
                     np.array([np.radians(-25), 0.2]),
                     np.array([np.radians(25), 1.0]),
                 )
-                x_next, reward, _, _ = env.step(np.squeeze(action))
+                (
+                    x_next,
+                    reward,
+                    done,
+                    _,
+                    _,
+                ) = env.step(np.squeeze(action))
                 total_steps += 1
                 episode_steps += 1
                 if episode_steps >= max_steps:
@@ -167,8 +172,6 @@ def run_train(env, agent, ac_model, STATE_ERROR_WEIGHTS, TRACKED):
 
                 ### Update Model ###
                 ac_model.update(x, action, x_next)
-
-                ### Bookkeeping ###
                 x = x_next
     return X, U, U_ref, critic_grad, action_grad, C_real, C_trained, total_steps, R
 
@@ -178,14 +181,14 @@ def plot_result(X, U, U_ref, critic_grad, action_grad, C_real, C_trained, R, nam
     axis[0, 0].plot([i[0] for i in X], label="L[m]")
     axis[0, 0].plot([i[1] for i in X], label="H[m]")
     # axis[0, 0].plot([np.squeeze(i)[0] for i in X_pred], label="X position (pred)")
-    axis[0, 0].plot([np.squeeze(i)[1] for i in U_ref], "--", label="H position (ref)")
+    axis[0, 0].plot([np.squeeze(i)[0] for i in U_ref], "--", label="H position (ref)")
     # axis[0, 0].plot([np.squeeze(i)[1] for i in X_pred], label="Y position (pred)")
     axis[0, 0].legend()
 
     axis[0, 1].plot([np.degrees(i[2]) for i in X], label="w_z [deg/s]")
     axis[0, 1].plot([np.degrees(i[3]) for i in X], label="theta [deg]")
     axis[0, 1].plot(
-        [np.degrees(np.squeeze(i)[3]) for i in U_ref], "--", label="theta (ref)"
+        [np.degrees(np.squeeze(i)[2]) for i in U_ref], "--", label="theta (ref)"
     )
     axis[0, 1].legend()
 
@@ -221,7 +224,7 @@ def string_from_list(arr):
     return string_value
 
 
-def init_models(hyper_params, weights):
+def init_models(hyper_params):
     TENSORBOARD_DIR = "./logs/tensorboard/DHP/"
     state_size = hyper_params.get("state_size")
     action_size = hyper_params.get("action_size")
@@ -296,7 +299,7 @@ def optimize_fun(weights):
         "TRACKED": TRACKED,
     }
 
-    agent, ac_model = init_models(hyper_params, weights)
+    agent, ac_model = init_models(hyper_params)
     (
         X,
         U,
@@ -318,3 +321,4 @@ def optimize_fun(weights):
 weights = [1, 1, 2, 1, 1, 100]
 
 cost = optimize_fun(weights)
+print(f"total cost per step = {cost}")

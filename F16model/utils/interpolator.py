@@ -1,3 +1,4 @@
+import numpy as np
 from scipy.interpolate import RegularGridInterpolator, interp1d
 from csaps import csaps
 
@@ -18,16 +19,21 @@ class Interpolator:
             return self._interp_csaps(x_int, smooth)
 
     def _interp_linear(self, x_int):
+        x_int = np.clip(
+            x_int, a_min=[np.min(i) for i in self.x], a_max=[np.max(i) for i in self.x]
+        )
+
         interp_y = RegularGridInterpolator(
             self.x,
             self.y,
             method="linear",
-            bounds_error=False,
+            bounds_error=True,
             fill_value=None,
         )
         return interp_y(x_int)
 
     def _interp_linear1d(self, x_int):
+        x_int = np.clip(x_int, a_min=np.min(self.x), a_max=np.max(self.x))
         interp_y = interp1d(
             self.x,
             self.y,
