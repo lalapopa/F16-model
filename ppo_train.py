@@ -170,7 +170,7 @@ if __name__ == "__main__":
             ).to(device)
             if done:
                 print(
-                    f"global_step={global_step}, episodic_return={info['total_return']}!"
+                    f"global_step={global_step}, episodic_return={info['total_return']}!, episodic_length={info['episode_length']}"
                 )
                 writer.add_scalar(
                     "charts/episodic_return", info["total_return"], global_step
@@ -182,9 +182,6 @@ if __name__ == "__main__":
                     wandb.log({"charts/episodic_return": info["total_return"]})
                     wandb.log({"charts/episodic_length": info["episode_length"]})
                 break
-        print(
-            f"global_step={global_step}, episodic_return={info['total_return']}!,\n{next_obs}"
-        )
         # bootstrap value if not done
         with torch.no_grad():
             next_value = agent.get_value(next_obs).reshape(1, -1)

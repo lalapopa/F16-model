@@ -82,6 +82,8 @@ class Env:
         init_state = self.model.reset()[0:6]  # same here we dont need 3 last states
         self.total_return = 0
         self.episode_length = 0
+        self.clock = 0
+        self.done = False
         return init_state
 
 
