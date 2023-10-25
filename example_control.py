@@ -5,11 +5,12 @@ import F16model.utils.plots as utils_plots
 import F16model.utils.control as utils_control
 
 
-CONST_STEP = True
+CONST_STEP = False
 
 
 def run_sim(x0, u0, max_episode=2000):
     env = Env(x0, u0)
+    env.reset()
     t0 = 0
     dt = env.dt
     tn = env.tn
@@ -17,11 +18,11 @@ def run_sim(x0, u0, max_episode=2000):
 
     # Control Define
     if CONST_STEP:
-        stab_act = np.radians(utils_control.step_function(t0, dt, tn, 0, 4))
-        throttle_act = utils_control.step_function(t0, dt, tn, 0, 0.6)
+        stab_act = utils_control.step_function(t0, dt, tn, 0, 0, bias=u0[0])
+        throttle_act = utils_control.step_function(t0, dt, tn, 0, 0, bias=u0[1])
     else:
         stab_act = utils_control.make_step_series(
-            t0, dt, tn, np.radians(20), step_time=1, hold_time=1, bias=u0[0]
+            t0, dt, tn, np.radians(3), step_time=1, hold_time=1, bias=u0[0]
         )
         throttle_act = utils_control.step_function(t0, dt, tn, 5, 1, bias=u0[1])
 
@@ -44,6 +45,8 @@ def run_sim(x0, u0, max_episode=2000):
 
 if __name__ == "__main__":
     x0, u0 = get_trimmed_state_control()
-    states, actions, r, t = run_sim(x0, u0)
+    for i in range(0, 2):
+        states, actions, r, t = run_sim(x0, u0)
+        print(r)
     print(f"total reward {r}")
     utils_plots.result(states, actions, t, "test_name")
