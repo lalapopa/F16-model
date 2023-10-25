@@ -35,20 +35,34 @@ class Env:
         else:
             raise ValueError(f"Action has type '{type(action)}' should be np.array")
         state = self.model.step(action)
-        reward = 0
-
-        #        print(f"TIME:{self.clock}| {state}")
         self.clock += self.dt
-        reward = -sum(state.to_array()[:6] - self.init_state.to_array()[:6]) * 0.01
+        a_w, a_V, a_y, a_theta, a_stab, a_throttle = 1e8, 1, 0.5, 1e7, 1, 0.035
+        #        print(
+        #            f"rew diff {(state.wz - self.init_state.wz) ** 2}, {(state.V - self.init_state.V) ** 2}, {(state.Oy - self.init_state.Oy) ** 2}, {(state.theta - self.init_state.theta) ** 2}"
+        #        )
+        #        print(f"rew diff control {(action.stab) ** 2}, {(action.throttle) ** 2}")
+        reward_s = -(
+            a_w * (state.wz - self.init_state.wz) ** 2
+            + a_V * (state.V - self.init_state.V) ** 2
+            + a_y * (state.Oy - self.init_state.Oy) ** 2
+            + a_theta * (state.theta - self.init_state.theta) ** 2
+        )
+        reward_a = -(a_stab * (action.stab) ** 2 + a_throttle * (action.throttle) ** 2)
+        reward = reward_s + reward_a
 
         if self.clock >= self.tn:
-            reward += 50
+            reward += 1000000
+            print("clock done")
+            self.done = True
+
+        if state.Oy <= 0:
+            reward -= 1000000
+            print("Oy done")
             self.done = True
 
         if np.radians(-20) < state.alpha < np.radians(45):
-            reward += 0.1
+            pass
         else:
-            reward -= 100
             self.done = True
 
         self.episode_length += 1

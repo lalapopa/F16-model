@@ -8,7 +8,7 @@ import F16model.utils.control as utils_control
 from model import Agent
 
 
-model_name = "models/F16__ppo_trian__1__1698145762_df16"
+model_name = "models/F16__ppo_trian__1__1698157345_fee7"
 
 
 CONST_STEP = True
@@ -47,7 +47,7 @@ def run_sim(x0, u0, max_episode=2000):
 
         action, _, _, _ = agent.get_action_and_value(state)
         action = action.numpy()[0]
-        print(f"{i} {action} ")
+        action = np.clip(action, np.radians(-25), np.radians(25))
         state, reward, done, current_time, _ = env.step(action)
         if state.all():
             states.append(state)
@@ -55,6 +55,7 @@ def run_sim(x0, u0, max_episode=2000):
             actions.append(action)
             times.append(current_time)
         if done:
+            print("FOK")
             break
     return states, actions, sum(rewards), times
 

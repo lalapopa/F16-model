@@ -21,11 +21,11 @@ def parse_args():
         help="the name of this experiment")
     parser.add_argument("--gym-id", type=str, default="CartPole-v1",
         help="the id of the gym environment")
-    parser.add_argument("--learning-rate", type=float, default=0.000001,
+    parser.add_argument("--learning-rate", type=float, default=0.0000001,
         help="the learning rate of the optimizer")
     parser.add_argument("--seed", type=int, default=1,
         help="seed of the experiment")
-    parser.add_argument("--total-timesteps", type=int, default=2000000,
+    parser.add_argument("--total-timesteps", type=int, default=20000000,
         help="total timesteps of the experiments")
     parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, `torch.backends.cudnn.deterministic=False`")
@@ -43,7 +43,7 @@ def parse_args():
     # Algorithm specific arguments
     parser.add_argument("--num-envs", type=int, default=1,
         help="the number of parallel game environments")
-    parser.add_argument("--num-steps", type=int, default=512,
+    parser.add_argument("--num-steps", type=int, default=1024,
         help="the number of steps to run in each environment per policy rollout")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
@@ -55,7 +55,7 @@ def parse_args():
         help="the lambda for the general advantage estimation")
     parser.add_argument("--num-minibatches", type=int, default=1,
         help="the number of mini-batches")
-    parser.add_argument("--update-epochs", type=int, default=4,
+    parser.add_argument("--update-epochs", type=int, default=2,
         help="the K epochs to update the policy")
     parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggles advantages normalization")
@@ -145,7 +145,6 @@ if __name__ == "__main__":
         # Annealing the rate if instructed to do so.
         obs_init = env.reset()
         next_obs = torch.Tensor(obs_init).to(device).reshape(-1, obs_init.shape[0])
-        next_obs = torch.nn.functional.normalize(next_obs, p=2, dim=-1)
         if args.anneal_lr:
             frac = 1.0 - (update - 1.0) / num_updates
             lrnow = frac * args.learning_rate
@@ -165,12 +164,12 @@ if __name__ == "__main__":
 
             action = action.cpu().numpy()[0]
             next_obs, reward, done, _, info = env.step(action)
+            #            print(f"{global_step}|\n{next_obs}")
             rewards[step] = torch.tensor(reward).to(device).view(-1)
 
             next_obs, next_done = torch.Tensor([next_obs]).to(device), torch.Tensor(
                 [done]
             ).to(device)
-            next_obs = torch.nn.functional.normalize(next_obs, p=2, dim=-1)
             if done:
                 print(
                     f"global_step={global_step}, episodic_return={info['total_return']}!"
@@ -185,7 +184,9 @@ if __name__ == "__main__":
                     wandb.log({"charts/episodic_return": info["total_return"]})
                     wandb.log({"charts/episodic_length": info["episode_length"]})
                 break
-        print(f"global_step={global_step}, episodic_return={info['total_return']}!")
+        print(
+            f"global_step={global_step}, episodic_return={info['total_return']}!,\n{next_obs}"
+        )
         # bootstrap value if not done
         with torch.no_grad():
             next_value = agent.get_value(next_obs).reshape(1, -1)
