@@ -11,7 +11,7 @@ class Env:
 
     def __init__(self, init_state: np.ndarray, init_control: np.ndarray):
         self.dt = 0.02  # simulation step
-        self.tn = 30  # finish time
+        self.tn = 10  # finish time
         self.clock = 0
         self.done = False
         self.init_state = States(
@@ -28,20 +28,26 @@ class Env:
         self.model = interface.F16model(self.init_state, self.dt)
         self.total_return = 0
         self.episode_length = 0
+        self.prev_done = False
 
     def step(self, action):
         if isinstance(action, np.ndarray):
             action = Control(action[0], action[1])
         else:
             raise ValueError(f"Action has type '{type(action)}' should be np.array")
+
+        if self.prev_done:
+            self.prev_done = False
+            _ = self.reset()
+
         state = self.model.step(action)
         self.clock += self.dt
         a_w, a_V, a_y, a_theta, a_stab, a_throttle = 1e-3, 1e-2, 1e-2, 1e-3, 1e-3, 1e-2
-#        print(
-#            f"rew diff {(state.wz - self.init_state.wz) ** 2}, {(state.V - self.init_state.V) ** 2}, {(state.Oy - self.init_state.Oy) ** 2}, {(state.theta - self.init_state.theta) ** 2}"
-#        )
-#        print(f"rew diff control {(action.stab) ** 2}, {(action.throttle) ** 2}")
-        reward = 0 
+        #        print(
+        #            f"rew diff {(state.wz - self.init_state.wz) ** 2}, {(state.V - self.init_state.V) ** 2}, {(state.Oy - self.init_state.Oy) ** 2}, {(state.theta - self.init_state.theta) ** 2}"
+        #        )
+        #        print(f"rew diff control {(action.stab) ** 2}, {(action.throttle) ** 2}")
+        reward = 0
         if self.clock >= self.tn:
             reward += 100
             print("clock done")
@@ -53,18 +59,17 @@ class Env:
             self.done = True
 
         if np.radians(-20) < state.alpha < np.radians(45):
-            reward += (self.episode_length ** 0.5) / 2  
-#            reward += 1
+            reward += (self.episode_length**0.5) / 2
             pass
         else:
-            reward -= 10
+            reward -= 100
             print("alpha done")
             self.done = True
 
         out_state = state.to_array()[
             1:6
         ]  # dont need return last 3 states and Ox, its only for internal use
-        
+
         out_state = self.normalize(out_state)
 
         self.episode_length += 1
@@ -75,13 +80,18 @@ class Env:
                 + a_y * (state.Oy - self.init_state.Oy) ** 2
                 + a_theta * (state.theta - self.init_state.theta) ** 2
             )
-            reward_a = -(a_stab * (action.stab) ** 2 + a_throttle * (action.throttle) ** 2)
+            reward_a = -(
+                a_stab * (action.stab) ** 2 + a_throttle * (action.throttle) ** 2
+            )
             reward += reward_s + reward_a
+            self.prev_done = True
         else:
-            reward_a = -(a_stab * (action.stab) ** 2 + a_throttle * (action.throttle) ** 2)
+            reward_a = -(
+                a_stab * (action.stab) ** 2 + a_throttle * (action.throttle) ** 2
+            )
             reward += reward_a
 
-        reward = 0.3*min(np.tanh(reward) ,0)+ 5.0 * max(np.tanh(reward),0)
+        reward = 0.3 * min(np.tanh(reward), 0) + 5.0 * max(np.tanh(reward), 0)
 
         self.total_return += reward
         info = {
@@ -90,27 +100,37 @@ class Env:
         }
 
         return out_state, reward, self.done, self.clock, info
-    
+
     def normalize(self, truncated_state):
         Oy, wz, theta, V, alpha = truncated_state
-        norm_values = np.array([
-            minmaxscaler(Oy, 0, 15000), 
-            minmaxscaler(wz, np.radians(-60), np.radians(60)), 
-            minmaxscaler(theta, np.radians(-60), np.radians(60)),
-            minmaxscaler(V, 0, 600),
-            minmaxscaler(alpha, np.radians(-30), np.radians(60)),
-        ])
+        norm_values = np.array(
+            [
+                minmaxscaler(Oy, 0, 15000),
+                minmaxscaler(wz, np.radians(-60), np.radians(60)),
+                minmaxscaler(theta, np.radians(-60), np.radians(60)),
+                minmaxscaler(V, 0, 600),
+                minmaxscaler(alpha, np.radians(-30), np.radians(60)),
+            ]
+        )
         return norm_values
 
     def denormalize(self, state_norm):
         Oy_norm, wz_norm, theta_norm, V_norm, alpha_norm = state_norm
-        norm_values = np.array([
-            minmaxscaler(Oy_norm, 0, 15000, inverse_transform=True), 
-            minmaxscaler(wz_norm, np.radians(-60), np.radians(60), inverse_transform=True), 
-            minmaxscaler(theta_norm, np.radians(-60), np.radians(60), inverse_transform=True),
-            minmaxscaler(V_norm, 0, 600, inverse_transform=True),
-            minmaxscaler(alpha_norm, np.radians(-30), np.radians(60), inverse_transform=True),
-        ])
+        norm_values = np.array(
+            [
+                minmaxscaler(Oy_norm, 0, 15000, inverse_transform=True),
+                minmaxscaler(
+                    wz_norm, np.radians(-60), np.radians(60), inverse_transform=True
+                ),
+                minmaxscaler(
+                    theta_norm, np.radians(-60), np.radians(60), inverse_transform=True
+                ),
+                minmaxscaler(V_norm, 0, 600, inverse_transform=True),
+                minmaxscaler(
+                    alpha_norm, np.radians(-30), np.radians(60), inverse_transform=True
+                ),
+            ]
+        )
         return norm_values
 
     def reset(self):
@@ -121,10 +141,11 @@ class Env:
         self.done = False
         return init_state
 
+
 def minmaxscaler(value, min_value, max_value, inverse_transform=False):
     if inverse_transform:
-        return value * (max_value - min_value) + min_value 
-    return (value - min_value) / (max_value - min_value) 
+        return value * (max_value - min_value) + min_value
+    return (value - min_value) / (max_value - min_value)
 
 
 def run_episode(init_state, init_action, max_steps=2000):

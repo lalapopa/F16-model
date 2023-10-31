@@ -41,7 +41,7 @@ def parse_args():
     # Algorithm specific arguments
     parser.add_argument("--num-envs", type=int, default=1,
         help="the number of parallel game environments")
-    parser.add_argument("--num-steps", type=int, default=512,
+    parser.add_argument("--num-steps", type=int, default=2560,
         help="the number of steps to run in each environment per policy rollout")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
@@ -119,7 +119,7 @@ if __name__ == "__main__":
     # env setup
 
     env = make_env()
-    action_size = 2 # stab movement, throttle
+    action_size = 2  # stab movement, throttle
     obs_size = (env.reset()).shape[0]
 
     agent = Agent(obs_size, action_size).to(device)
@@ -132,7 +132,6 @@ if __name__ == "__main__":
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
-
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
@@ -162,9 +161,8 @@ if __name__ == "__main__":
 
             action = action.cpu().numpy()[0]
             next_obs, reward, done, _, info = env.step(action)
-            #            print(f"{global_step}|\n{next_obs}")
+            # print(f"{global_step}|\n{next_obs}")
             rewards[step] = torch.tensor(reward).to(device).view(-1)
-
             next_obs, next_done = torch.Tensor([next_obs]).to(device), torch.Tensor(
                 [done]
             ).to(device)
@@ -181,7 +179,7 @@ if __name__ == "__main__":
                 if args.track:
                     wandb.log({"charts/episodic_return": info["total_return"]})
                     wandb.log({"charts/episodic_length": info["episode_length"]})
-                break
+        print(f"|{update}|{num_updates + 1}|")
         # bootstrap value if not done
         with torch.no_grad():
             next_value = agent.get_value(next_obs).reshape(1, -1)
