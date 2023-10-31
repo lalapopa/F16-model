@@ -215,7 +215,7 @@ def plot_result(X, U, U_ref, critic_grad, action_grad, C_real, C_trained, R, nam
 
     axis[2, 2].plot(R, label="Reward")
     axis[2, 2].legend()
-
+    plt.grid()
     plt.savefig(f"./logs/{name}")
 
 

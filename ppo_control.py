@@ -8,11 +8,12 @@ import F16model.utils.control as utils_control
 from model import Agent
 
 
-model_name = "models/F16__ppo_trian__1__1698157345_fee7"
+model_name = "models/F16__ppo_train__1__1698235941_9f8d"
 
 
 CONST_STEP = True
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def run_sim(x0, u0, max_episode=2000):
     env = Env(x0, u0)
@@ -42,11 +43,10 @@ def run_sim(x0, u0, max_episode=2000):
     rewards = []
     times = []
     for i, _ in enumerate(t):
-        state = torch.Tensor(state).reshape(-1, state.shape[0])
-        state = torch.nn.functional.normalize(state, p=2, dim=-1)
+        state = torch.Tensor(state).to(device).reshape(-1, state.shape[0])
 
         action, _, _, _ = agent.get_action_and_value(state)
-        action = action.numpy()[0]
+        action = action.cpu().numpy()[0]
         action = np.clip(action, np.radians(-25), np.radians(25))
         state, reward, done, current_time, _ = env.step(action)
         if state.all():
