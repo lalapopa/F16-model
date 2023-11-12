@@ -1,2 +1,2 @@
 from .env import F16
-from .interface import States, Control
+from ._interface import States, Control

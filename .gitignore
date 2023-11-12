@@ -1,4 +1,5 @@
 *.spec
+*egg-info
 logs/
 runs/
 models/

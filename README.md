@@ -2,6 +2,9 @@
 
 ![Py_Ver](https://img.shields.io/badge/Python-3.9.6-brightgreen?style=plastic&color=blue)
 
+Use:
+`F16model.model.env.F16` - gym like env 
+
 ## GUI для нахождения тримированного значения в продольном канале
 
 ### Установка 
@@ -17,3 +20,5 @@
 Скачать собранный EXE:
 
 [URL](https://github.com/lalapopa/F16-model/releases/tag/v0.00)
+
+

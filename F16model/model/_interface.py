@@ -107,7 +107,7 @@ class Control:
 
 class F16model:
 
-    """Main class for interacting with F-16 model"""
+    """Bearbone interface for calculating next state"""
 
     def __init__(self, x0: States, dt=0.001):
         self.state_prev = x0
@@ -121,4 +121,4 @@ class F16model:
 
     def reset(self):
         self.state_prev = self.init_state
-        return self.state_prev.to_array()
+        return self.state_prev

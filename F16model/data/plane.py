@@ -16,3 +16,11 @@ maxthrottle = 1
 
 lef = 0
 sb = 0
+
+state_restrictions = {
+    "Oy": [0, 15000],
+    "wz": [np.radians(-60), np.radians(60)],
+    "theta": [np.radians(-60), np.radians(60)],
+    "V": [0, 600],
+    "alpha": [np.radians(-30), np.radians(60)],
+}

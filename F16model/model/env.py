@@ -1,8 +1,8 @@
 import numpy as np
 
-from .interface import States, Control, F16model
+from ._interface import States, Control, F16model
 from .engine import find_correct_thrust_position
-import F16model.utils.plots as utils_plots
+import F16model.data.plane as plane
 
 
 class F16:
@@ -44,14 +44,24 @@ class F16:
             _ = self.reset()
 
         state = self.model.step(action)
+
         self.clock += self.dt
+        self.episode_length += 1
+
+        reward = self.compute_reward(state, action)
+        out_state = self.state_transform(state)
+
+        self.total_return += reward
+        info = {
+            "episode_length": self.episode_length,
+            "total_return": self.total_return,
+        }
+        return out_state, reward, self.done, self.clock, info
+
+    def compute_reward(self, state, action):
         a_w, a_V, a_y, a_theta, a_stab, a_throttle = 1e-3, 1e-2, 1e-2, 1e-3, 1e-3, 1e-2
-        #        print(
-        #            f"rew diff {(state.wz - self.init_state.wz) ** 2}, {(state.V - self.init_state.V) ** 2}, {(state.Oy - self.init_state.Oy) ** 2}, {(state.theta - self.init_state.theta) ** 2}"
-        #        )
-        #        print(f"rew diff control {(action.stab) ** 2}, {(action.throttle) ** 2}")
         reward = 0
-        if self.clock >= self.tn:
+        if self.clock >= self.tn - self.dt:
             reward += 100
             print("clock done")
             self.done = True
@@ -63,19 +73,11 @@ class F16:
 
         if np.radians(-20) < state.alpha < np.radians(45):
             reward += (self.episode_length**0.5) / 2
-            pass
         else:
             reward -= 100
             print("alpha done")
             self.done = True
 
-        out_state = state.to_array()[
-            1:6
-        ]  # dont need return last 3 states and Ox, its only for internal use
-        if self.norm_state:
-            out_state = self.normalize(out_state)
-
-        self.episode_length += 1
         if self.done:
             reward_s = -(
                 a_w * (state.wz - self.init_state.wz) ** 2
@@ -93,57 +95,38 @@ class F16:
                 a_stab * (action.stab) ** 2 + a_throttle * (action.throttle) ** 2
             )
             reward += reward_a
-
         reward = 0.3 * min(np.tanh(reward), 0) + 5.0 * max(np.tanh(reward), 0)
+        return reward
 
-        self.total_return += reward
-        info = {
-            "episode_length": self.episode_length,
-            "total_return": self.total_return,
-        }
+    def state_transform(self, state):
+        state_short = {
+            k: vars(state)[k]  for k, _ in plane.state_restrictions.items()  if k in vars(state) 
+        } # take keys that defines in state_restrictions from `State` class
+        state_short = np.array(list(state_short.values()))
+        if self.norm_state:
+            state_short = F16.normalize(state_short)
+        return state_short
 
-        return out_state, reward, self.done, self.clock, info
+    def normalize(truncated_state):
+        norm_values = []
+        for i, values in enumerate(plane.state_restrictions.values()):
+            norm_values.append(minmaxscaler(truncated_state[i], values[0], values[1]))
+        return np.array(norm_values)
 
-    def normalize(self, truncated_state):
-        Oy, wz, theta, V, alpha = truncated_state
-        norm_values = np.array(
-            [
-                minmaxscaler(Oy, 0, 15000),
-                minmaxscaler(wz, np.radians(-60), np.radians(60)),
-                minmaxscaler(theta, np.radians(-60), np.radians(60)),
-                minmaxscaler(V, 0, 600),
-                minmaxscaler(alpha, np.radians(-30), np.radians(60)),
-            ]
-        )
-        return norm_values
+    def denormalize(state_norm):
+        norm_values = []
+        for i, values in enumerate(plane.state_restrictions.values()):
+            norm_values.append(minmaxscaler(state_norm[i], values[0], values[1], inverse_transform=True))
+        return np.array(norm_values)
 
     def reset(self):
-        init_state = self.model.reset()[1:6]  # same here we dont need 3 last states
+        init_state = self.model.reset()
+        init_state = self.state_transform(self, init_state)
         self.total_return = 0
         self.episode_length = 0
         self.clock = 0
         self.done = False
         return init_state
-
-
-def denormalize(state_norm):
-    Oy_norm, wz_norm, theta_norm, V_norm, alpha_norm = state_norm
-    norm_values = np.array(
-        [
-            minmaxscaler(Oy_norm, 0, 15000, inverse_transform=True),
-            minmaxscaler(
-                wz_norm, np.radians(-60), np.radians(60), inverse_transform=True
-            ),
-            minmaxscaler(
-                theta_norm, np.radians(-60), np.radians(60), inverse_transform=True
-            ),
-            minmaxscaler(V_norm, 0, 600, inverse_transform=True),
-            minmaxscaler(
-                alpha_norm, np.radians(-30), np.radians(60), inverse_transform=True
-            ),
-        ]
-    )
-    return norm_values
 
 
 def minmaxscaler(value, min_value, max_value, inverse_transform=False):
@@ -153,6 +136,7 @@ def minmaxscaler(value, min_value, max_value, inverse_transform=False):
 
 
 def run_episode(init_state, init_action, max_steps=2000):
+    """Example of running F16 model"""
     env = F16(init_state, init_action)
     actions = []
     states = []
@@ -177,6 +161,7 @@ def get_action():
 
 
 def get_trimmed_state_control():
+    """Short cut insted of calculating from trim_app.py"""
     u_trimmed = Control(
         np.radians(-4.3674), 0.3767
     )  # Trimmed values for V = 200 m/s, H = 3000 m
@@ -192,4 +177,3 @@ def get_trimmed_state_control():
         Pa=find_correct_thrust_position(u_trimmed.throttle),
     )
     return x0.to_array(), u_trimmed.to_array()
-
