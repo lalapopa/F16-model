@@ -11,6 +11,7 @@ import tensorflow as tf
 from agent import model
 from agent import dhp as DHP
 from make_enviroment import Env
+from make_enviroment import denormalize
 from F16model.model import States, Control, interface
 from F16model.model.engine import find_correct_thrust_position
 
@@ -39,7 +40,7 @@ def run_train(env, agent, ac_model, STATE_ERROR_WEIGHTS, TRACKED):
     list_F, list_G, list_RLS_cov, e_model = [], [], [], []
     U_ref = []
     total_steps = 1
-    max_episode = 1000
+    max_episode = 4000
     max_steps = 4000
     excitation_steps = 105
     nan_occurs = False
@@ -60,12 +61,13 @@ def run_train(env, agent, ac_model, STATE_ERROR_WEIGHTS, TRACKED):
             episode_steps = 1
             while not done:
                 x_ref = ref_generator.get_reference().reshape([1, -1, 1])
-                R_sig = np.squeeze(x_ref)[1:].reshape([1, -1, 1])
+                R_sig = np.squeeze(x_ref).reshape([1, -1, 1])
                 U_ref.append(R_sig)
                 j = 0
                 x = x.reshape([1, -1, 1])
                 while j < 2:
                     # Next state prediction
+                    # print(f"x = {x}, R_sig = {R_sig}")
                     action = agent.action(x, reference=R_sig).reshape([1, -1, 1])
                     action_clipped = np.clip(
                         action,
@@ -173,49 +175,74 @@ def run_train(env, agent, ac_model, STATE_ERROR_WEIGHTS, TRACKED):
                 ### Update Model ###
                 ac_model.update(x, action, x_next)
                 x = x_next
+                if done:
+                    name = string_from_list(STATE_ERROR_WEIGHTS) + "_" + str(i) + ".png"
+                    plot_result(
+                        X,
+                        U,
+                        U_ref,
+                        critic_grad,
+                        action_grad,
+                        C_real,
+                        C_trained,
+                        R,
+                        name,
+                    )
     return X, U, U_ref, critic_grad, action_grad, C_real, C_trained, total_steps, R
 
 
 def plot_result(X, U, U_ref, critic_grad, action_grad, C_real, C_trained, R, name):
     _, axis = plt.subplots(4, 3, figsize=(14, 10))
-    axis[0, 0].plot([i[0] for i in X], label="L[m]")
-    axis[0, 0].plot([i[1] for i in X], label="H[m]")
+
+    axis[0, 0].plot([i[0] for i in X], label="H[m]")
+    # axis[0, 0].plot([i[1] for i in X], label="H[m]")
     # axis[0, 0].plot([np.squeeze(i)[0] for i in X_pred], label="X position (pred)")
     axis[0, 0].plot([np.squeeze(i)[0] for i in U_ref], "--", label="H position (ref)")
     # axis[0, 0].plot([np.squeeze(i)[1] for i in X_pred], label="Y position (pred)")
     axis[0, 0].legend()
+    axis[0, 0].grid()
 
-    axis[0, 1].plot([np.degrees(i[2]) for i in X], label="w_z [deg/s]")
-    axis[0, 1].plot([np.degrees(i[3]) for i in X], label="theta [deg]")
+    axis[0, 1].plot([np.degrees(i[1]) for i in X], label="w_z [deg/s]")
+    axis[0, 1].plot([np.degrees(i[2]) for i in X], label="theta [deg]")
     axis[0, 1].plot(
         [np.degrees(np.squeeze(i)[2]) for i in U_ref], "--", label="theta (ref)"
     )
     axis[0, 1].legend()
+    axis[0, 1].grid()
 
-    axis[0, 2].plot([i[4] for i in X], label="V [m/s]")
+    axis[0, 2].plot([i[3] for i in X], label="V [m/s]")
     axis[0, 2].legend()
+    axis[0, 2].grid()
 
-    axis[1, 2].plot([np.degrees(i[5]) for i in X], label="alpha [deg]")
+    axis[1, 2].plot([np.degrees(i[4]) for i in X], label="alpha [deg]")
     axis[1, 2].legend()
+    axis[1, 2].grid()
 
     axis[1, 1].plot([np.degrees(i[0]) for i in U], label="stab [deg]")
     axis[1, 0].legend()
+    axis[1, 0].grid()
 
     axis[1, 1].plot([i[1] for i in U], label="throttle [%]")
     axis[1, 1].legend()
+    axis[1, 1].grid()
 
     axis[2, 0].plot(np.squeeze(C_real), label="cost_real")
     axis[2, 0].plot(np.squeeze(C_trained), label="cost_predicted")
+    axis[2, 0].set_ylim(0, 10)
     axis[2, 0].legend()
+    axis[2, 0].grid()
 
     axis[2, 1].plot([np.squeeze(i) for i in critic_grad], label="critic grad")
     axis[2, 1].legend()
+    axis[2, 1].grid()
+
     axis[3, 1].plot([np.squeeze(i) for i in action_grad], label="actor grad")
     axis[3, 1].legend()
+    axis[3, 1].grid()
 
     axis[2, 2].plot(R, label="Reward")
     axis[2, 2].legend()
-    plt.grid()
+    axis[2, 2].grid()
     plt.savefig(f"./logs/{name}")
 
 
@@ -281,15 +308,16 @@ def init_models(hyper_params):
 def init_env():
     u_trimmed = np.array([np.radians(-4.3674), 0.3767])
     init_state = np.array([0, 3000, 0, np.radians(2.7970), 200, np.radians(2.7970)])
-    env = Env(init_state, u_trimmed)
-    state_size = len(init_state)
+    env = Env(init_state, u_trimmed, norm_state=False)
+    state_size = 5
     action_size = 2
-    TRACKED = [False, True, True, True, True, True]
+    TRACKED = [True, True, True, True, True]
     return state_size, action_size, TRACKED, env
 
 
 def optimize_fun(weights):
     state_size, action_size, TRACKED, env = init_env()
+
     hyper_params = {
         "state_size": state_size,
         "action_size": action_size,
@@ -318,7 +346,7 @@ def optimize_fun(weights):
     return cost_step
 
 
-weights = [1, 1, 2, 1, 1, 100]
+weights = [2, 100, 100, 100, 100]
 
 cost = optimize_fun(weights)
 print(f"total cost per step = {cost}")

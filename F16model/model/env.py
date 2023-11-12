@@ -1,15 +1,17 @@
 import numpy as np
 
-from F16model.model import States, Control, interface
-from F16model.model.engine import find_correct_thrust_position
+from .interface import States, Control, F16model
+from .engine import find_correct_thrust_position
 import F16model.utils.plots as utils_plots
 
 
-class Env:
+class F16:
 
     """RL like enviroment for F16model"""
 
-    def __init__(self, init_state: np.ndarray, init_control: np.ndarray, norm_state=False):
+    def __init__(
+        self, init_state: np.ndarray, init_control: np.ndarray, norm_state=False
+    ):
         self.dt = 0.02  # simulation step
         self.tn = 10  # finish time
         self.clock = 0
@@ -25,7 +27,7 @@ class Env:
             dstab=np.radians(0),
             Pa=find_correct_thrust_position(init_control[1]),
         )
-        self.model = interface.F16model(self.init_state, self.dt)
+        self.model = F16model(self.init_state, self.dt)
         self.total_return = 0
         self.episode_length = 0
         self.prev_done = False
@@ -151,7 +153,7 @@ def minmaxscaler(value, min_value, max_value, inverse_transform=False):
 
 
 def run_episode(init_state, init_action, max_steps=2000):
-    env = Env(init_state, init_action)
+    env = F16(init_state, init_action)
     actions = []
     states = []
     rewards = []
@@ -191,9 +193,3 @@ def get_trimmed_state_control():
     )
     return x0.to_array(), u_trimmed.to_array()
 
-
-if __name__ == "__main__":
-    x0, u0 = get_trimmed_state_control()
-    states, actions, reward, t = run_episode(x0, u0)
-    print(f"TOTAL REWARD = {reward}, TOTAL TIME = {t[-1]}")
-    utils_plots.result(states, actions, t)
