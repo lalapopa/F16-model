@@ -4,19 +4,19 @@ from datetime import datetime
 
 
 def result(x_array, u_array, time, plot_name=None):
-    plt.subplot(5, 1, 1)
+    plt.subplot(6, 1, 1)
     plt.plot(time, np.degrees([i[0] for i in u_array]), "-r")
     plt.grid()
     plt.xlim(time[0], time[-1])
     plt.ylabel(r"$stab_{act}$, deg")
 
-    plt.subplot(5, 1, 2)
+    plt.subplot(6, 1, 2)
     plt.plot(time, [i[1] for i in u_array], "-r")
     plt.grid()
     plt.xlim(time[0], time[-1])
     plt.ylabel(r"$P$")
 
-    plt.subplot(5, 1, 3)
+    plt.subplot(6, 1, 3)
     plt.plot(time, np.degrees([i[2] for i in x_array]), "-b", label=r"$\theta$")
     plt.plot(time, np.degrees([i[4] for i in x_array]), "--m", label=r"$\alpha$")
     plt.legend()
@@ -24,15 +24,22 @@ def result(x_array, u_array, time, plot_name=None):
     plt.xlim(time[0], time[-1])
     plt.ylabel(r"$\theta\, \alpha$, deg")
 
-    plt.subplot(5, 1, 4)
+    plt.subplot(6, 1, 4)
     plt.plot(time, np.degrees([i[1] for i in x_array]), "-b")
     plt.grid()
     plt.xlim(time[0], time[-1])
     plt.ylabel(r"$\omega_{z}$, deg/sec")
 
-    plt.subplot(5, 1, 5)
+    plt.subplot(6, 1, 5)
     plt.plot(time, [i[3] for i in x_array], "-b")
     plt.ylabel("$V$, m/s")
+    plt.grid()
+    plt.xlim(time[0], time[-1])
+    plt.xlabel("t, sec")
+
+    plt.subplot(6, 1, 6)
+    plt.plot(time, [i[0] for i in x_array], "-b")
+    plt.ylabel("$H$, m")
     plt.grid()
     plt.xlim(time[0], time[-1])
     plt.xlabel("t, sec")
@@ -45,3 +52,14 @@ def result(x_array, u_array, time, plot_name=None):
     plt.gcf().set_size_inches(8, 10)
     plt.tight_layout()
     plt.savefig(f"./logs/{plot_name}", dpi=300)
+    plt.clf()
+
+
+def algo(rewards, time, plot_name):
+    plt.subplot(1, 1, 1)
+    plt.plot(time, rewards)
+    plot_name = plot_name + ".png"
+    plt.gcf().set_size_inches(8, 10)
+    plt.tight_layout()
+    plt.savefig(f"./logs/{plot_name}", dpi=300)
+    plt.clf()

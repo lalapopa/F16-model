@@ -22,5 +22,5 @@ state_restrictions = {
     "wz": [np.radians(-60), np.radians(60)],
     "theta": [np.radians(-60), np.radians(60)],
     "V": [0, 600],
-    "alpha": [np.radians(-30), np.radians(60)],
+    "alpha": [np.radians(-90), np.radians(90)],
 }
