@@ -21,9 +21,9 @@ def parse_args():
         help="the name of this experiment")
     parser.add_argument("--gym-id", type=str, default="CartPole-v1",
         help="the id of the gym environment")
-    parser.add_argument("--learning-rate", type=float, default=0.0001,
+    parser.add_argument("--learning-rate", type=float, default=3.0e-4,
         help="the learning rate of the optimizer")
-    parser.add_argument("--seed", type=int, default=1,
+    parser.add_argument("--seed", type=int, default=2,
         help="seed of the experiment")
     parser.add_argument("--total-timesteps", type=int, default=1000000,
         help="total timesteps of the experiments")
@@ -41,7 +41,7 @@ def parse_args():
     # Algorithm specific arguments
     parser.add_argument("--num-envs", type=int, default=1,
         help="the number of parallel game environments")
-    parser.add_argument("--num-steps", type=int, default=256,
+    parser.add_argument("--num-steps", type=int, default=512,
         help="the number of steps to run in each environment per policy rollout")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
@@ -53,11 +53,11 @@ def parse_args():
         help="the lambda for the general advantage estimation")
     parser.add_argument("--num-minibatches", type=int, default=4,
         help="the number of mini-batches")
-    parser.add_argument("--update-epochs", type=int, default=20,
+    parser.add_argument("--update-epochs", type=int, default=10,
         help="the K epochs to update the policy")
     parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggles advantages normalization")
-    parser.add_argument("--clip-coef", type=float, default=0.2,
+    parser.add_argument("--clip-coef", type=float, default=0.4,
         help="the surrogate clipping coefficient")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
@@ -80,6 +80,7 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     run_name = f"F16__{args.exp_name}__{args.seed}__{str(int(time.time()))}_{('%032x' % random.getrandbits(128))[:4]}"
+    print(f"Start running: {run_name}")
     if args.track:
         import wandb
 
@@ -112,7 +113,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    env = F16()
+    env = F16(norm_state=True)
     action_size = 2  # stab movement, throttle
     obs_size = (env.reset()).shape[0]
 
@@ -135,6 +136,8 @@ if __name__ == "__main__":
     for update in range(1, num_updates + 1):
         # Annealing the rate if instructed to do so.
         obs_init = env.reset()
+        with open("logs/" + run_name + ".txt", "w") as f:
+            f.write(str(list(env.init_state.to_array()))+"\n")
         next_obs = torch.Tensor(obs_init).to(device).reshape(-1, obs_init.shape[0])
         if args.anneal_lr:
             frac = 1.0 - (update - 1.0) / num_updates
@@ -154,6 +157,8 @@ if __name__ == "__main__":
             logprobs[step] = logprob
 
             action = action.cpu().numpy()[0]
+            with open("logs/" + run_name + ".txt", "a") as f:
+                f.write(str(list(action)) + "\n")
             next_obs, reward, done, _, info = env.step(action)
             # print(f"{global_step}|\n{next_obs}")
             rewards[step] = torch.tensor(reward).to(device).view(-1)
@@ -173,6 +178,19 @@ if __name__ == "__main__":
                 if args.track:
                     wandb.log({"charts/episodic_return": info["total_return"]})
                     wandb.log({"charts/episodic_length": info["episode_length"]})
+        if not done:
+            print(
+                f"global_step={global_step}, episodic_return={info['total_return']}!, episodic_length={info['episode_length']}"
+            )
+            writer.add_scalar(
+                "charts/episodic_return", info["total_return"], global_step
+            )
+            writer.add_scalar(
+                "charts/episodic_length", info["episode_length"], global_step
+            )
+            if args.track:
+                wandb.log({"charts/episodic_return": info["total_return"]})
+                wandb.log({"charts/episodic_length": info["episode_length"]})
 
         print(f"|{update}|{num_updates + 1}|")
         # bootstrap value if not done

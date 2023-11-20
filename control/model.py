@@ -18,18 +18,22 @@ class Agent(nn.Module):
     def __init__(self, obs_shape, action_shape):
         super(Agent, self).__init__()
         self.critic = nn.Sequential(
-            layer_init(nn.Linear(obs_shape, 256)),
+            layer_init(nn.Linear(obs_shape, 64)),
+            nn.LayerNorm(64),
             nn.Tanh(),
-            layer_init(nn.Linear(256, 256)),
+            layer_init(nn.Linear(64, 64)),
+            nn.LayerNorm(64),
             nn.Tanh(),
-            layer_init(nn.Linear(256, 1), std=1.0),
+            layer_init(nn.Linear(64, 1), std=1.0),
         )
         self.actor_mean = nn.Sequential(
-            layer_init(nn.Linear(obs_shape, 256)),
+            layer_init(nn.Linear(obs_shape, 64)),
+            nn.LayerNorm(64),
             nn.Tanh(),
-            layer_init(nn.Linear(256, 256)),
+            layer_init(nn.Linear(64, 64)),
+            nn.LayerNorm(64),
             nn.Tanh(),
-            layer_init(nn.Linear(256, action_shape), std=0.001),
+            layer_init(nn.Linear(64, action_shape), std=0.001),
         )
         self.actor_logstd = nn.Parameter(torch.zeros(1, action_shape))
 

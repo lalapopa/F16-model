@@ -1,6 +1,7 @@
 import numpy as np
 
-from make_enviroment import Env, get_trimmed_state_control
+from F16model.model import F16
+from F16model.model.env import get_trimmed_state_control
 import F16model.utils.plots as utils_plots
 import F16model.utils.control as utils_control
 
@@ -9,7 +10,7 @@ CONST_STEP = False
 
 
 def run_sim(x0, u0, max_episode=2000):
-    env = Env(x0, u0)
+    env = F16(x0, u0)
     env.reset()
     t0 = 0
     dt = env.dt
@@ -39,6 +40,9 @@ def run_sim(x0, u0, max_episode=2000):
             actions.append(action)
             times.append(current_time)
         if done:
+            states = states[:i]
+            actions = actions[:i]
+            times = times[:i]
             break
     return states, actions, sum(rewards), times
 

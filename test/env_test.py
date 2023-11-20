@@ -1,10 +1,14 @@
 import numpy as np
+import random
+import ast
 
-from F16model.model import F16
+from F16model.model import F16, States
+from F16model.data import plane
 from F16model.model.env import run_episode, get_trimmed_state_control
 import F16model.utils.plots as utils_plots
 
 approx_reward = 2480.2364
+random.seed(322)
 
 
 def test_run_episode():
@@ -24,7 +28,7 @@ def test_F16():
     done = False
     while not done:
         # action = get_action()
-        action = np.array([0, 0])
+        action = np.array([np.radians(random.uniform(-10, 10)), 0.3])
         state, reward, done, current_time, _ = env.step(action)  # give as numpy array
         if state.all():
             states.append(state)
@@ -58,8 +62,9 @@ def test_trim_state_value():
     times = []
     done = False
     while not done:
-        # action = get_action()
-        action = np.random.rand(2)
+        # action = np.random.rand(2)
+        # action = np.array(u0)
+        action = np.array([0, 1])
         state, reward, done, current_time, _ = env.step(action)  # give as numpy array
         if state.all():
             states.append(state)
@@ -77,7 +82,50 @@ def test_trim_state_value():
     utils_plots.algo(rewards, times, plot_name="test_F16_trim_value_algo")
 
 
+def test_failed_run():
+    file_name = "./logs/F16__ppo_train__1__1699893040_2f26.txt"
+    data = []
+    with open(file_name, "r") as f:
+        for line in f:
+            data.append(ast.literal_eval(line))
+    init_state = States(*data[0])
+    actions = data[1:]
+    clipped_actions = []
+    for action in actions:
+        clipped_actions.append(
+            np.clip(action, [-plane.maxabsstab, 0], [plane.maxabsstab, 1])
+        )
+    env = F16(init_state=init_state, debug_state=True)
+    states = []
+    rewards = []
+    times = []
+    done = False
+    i = 0
+    for action in clipped_actions:
+        state, reward, done, current_time, _ = env.step(action)  # give as numpy array
+        i += 1
+        if state.all():
+            states.append(state)
+            rewards.append(reward)
+            times.append(current_time)
+        if done:
+            break
+
+    print(
+        f"TOTAL REWARD = {round(sum(rewards), 4)}/{approx_reward}, TOTAL TIME = {times[-1]}"
+    )
+    print(f"|{states[0]}|{len(rewards) = }|{done = }|")
+    utils_plots.result(
+        states[: i - 10],
+        clipped_actions[: i - 10],
+        times[: i - 10],
+        plot_name="test_F16_trim_value",
+    )
+    utils_plots.algo(rewards, times, plot_name="test_F16_trim_value_algo")
+
+
 if __name__ == "__main__":
     # test_run_episode()
-    # test_F16()
-    test_trim_state_value()
+    test_F16()
+    # test_trim_state_value()
+    # test_failed_run()

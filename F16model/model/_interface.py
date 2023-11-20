@@ -116,6 +116,8 @@ class F16model:
 
     def step(self, u_i: Control):
         next_state = self.state_prev + self.dt * solve(self.state_prev, u_i)
+        clip_wz = np.clip(next_state.wz, np.radians(-60), np.radians(60))
+        next_state.wz = clip_wz
         self.state_prev = next_state
         return next_state
 

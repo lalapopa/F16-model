@@ -9,25 +9,28 @@ class F16:
 
     """RL like enviroment for F16model"""
 
-    def __init__(self, init_state=None, init_control=None, norm_state=False):
-        self.dt = 0.02  # simulation step
-        self.tn = 5  # finish time
+    def __init__(self, init_state=None, init_control=None, norm_state=False, debug_state=False):
+        self.dt = 0.01  # simulation step
+        self.tn = 20  # finish time
         self.clock = 0
         self.done = False
-        if init_state and init_control:
-            self.init_state = States(
-                Ox=init_state[0],
-                Oy=init_state[1],
-                wz=init_state[2],
-                theta=init_state[3],
-                V=init_state[4],
-                alpha=init_state[5],
-                stab=init_control[0],
-                dstab=np.radians(0),
-                Pa=find_correct_thrust_position(init_control[1]),
-            )
+        if debug_state: # init state should be in States 
+            self.init_state = init_state
         else:
-            self.init_state = get_random_state()
+            if (init_state and init_control) == None:
+                self.init_state = get_random_state()
+            else:
+                self.init_state = States(
+                    Ox=init_state[0],
+                    Oy=init_state[1],
+                    wz=init_state[2],
+                    theta=init_state[3],
+                    V=init_state[4],
+                    alpha=init_state[5],
+                    stab=init_control[0],
+                    dstab=np.radians(0),
+                    Pa=find_correct_thrust_position(init_control[1]),
+                )
         self.model = F16model(self.init_state, self.dt)
         self.total_return = 0
         self.episode_length = 1
@@ -67,27 +70,15 @@ class F16:
         target_oy = self.init_state.Oy
         target_wz = 0
         target_V = self.init_state.V
-        xi_1 = 25.0
-        gamma_1 = 1
-        xi_2 = 2.5
-        gamma_2 = 0.1
-        xi_3 = 25.0
-        gamma_3 = 1
-        xi_4 = 60
-        gamma_4 = 0.1
-        r_oy = np.clip(abs(state.Oy - target_oy) / xi_1, 0, gamma_1)
-        r_wz = np.clip(abs(state.wz - target_wz) / xi_2, 0, gamma_2)
-        r_V = np.clip(abs(state.V - target_V) / xi_3, 0, gamma_3)
-        prev_action_diff = sum(abs(action.to_array() - self.prev_action.to_array()))
-        r_action = np.clip(prev_action_diff / xi_4, 0, gamma_4)
-        reward = -(r_oy + r_wz + r_V + r_action)
-        if state.Oy <= plane.state_restrictions["Oy"][0]+200:
-            reward = -1000
-        if state.Oy >= plane.state_restrictions["Oy"][1]-500:
-            reward = -1000
+#       state_coeff = np.array([1/10000, np.radians(1/40), 1/500]) # 8501, 5a80
+        state_coeff = np.array([1/50, np.radians(1/0.1), 1/6])
 
-        if self.episode_length >= self.tn / self.dt:
-            self.done = 500 
+        state_err = np.array([
+            state.Oy - target_oy,
+            state.wz - target_wz,
+            target_V - target_V,
+            ])
+        reward = -1/3*np.abs(np.clip(state_err * state_coeff, [-1,-1,-1], [1, 1, 1])).sum()
         return reward
 
     def state_transform(self, state):
@@ -102,10 +93,10 @@ class F16:
         return state_short
 
     def check_state(self, state):
-        if state.Oy <= plane.state_restrictions["Oy"][0]+200:
+        if state.Oy <= plane.state_restrictions["Oy"][0]-1000:
             self.done = True
 
-        if state.Oy >= plane.state_restrictions["Oy"][1]-500:
+        if state.Oy >= plane.state_restrictions["Oy"][1]+1000:
             self.done = True
 
         if self.episode_length >= self.tn / self.dt:
@@ -177,8 +168,8 @@ def get_random_state():
     return States(
         Ox=0,
         Oy=np.random.uniform(
-            plane.state_restrictions["Oy"][0] + 1000,
-            plane.state_restrictions["Oy"][1],
+            plane.state_restrictions["Oy"][0]+500,
+            plane.state_restrictions["Oy"][1]-1000,
             1,
         )[0],
         wz=np.random.uniform(
@@ -186,7 +177,7 @@ def get_random_state():
         )[0],
         theta=alpha_angle_random,
         V=np.random.uniform(
-            plane.state_restrictions["V"][0] + 100, plane.state_restrictions["V"][1], 1
+            plane.state_restrictions["V"][0] + 50, plane.state_restrictions["V"][1], 1
         )[0],
         alpha=alpha_angle_random,
         stab=np.random.uniform(-plane.maxabsstab, plane.maxabsstab, 1)[0],
@@ -202,10 +193,10 @@ def get_trimmed_state_control():
     )  # Trimmed values for V = 200 m/s, H = 3000 m
     x0 = States(
         Ox=0,
-        Oy=3000,
+        Oy=2000,
         wz=0,
         theta=np.radians(2.7970),
-        V=200,
+        V=90,
         alpha=np.radians(2.7970),
         stab=u_trimmed.stab,
         dstab=np.radians(0),
