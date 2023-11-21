@@ -48,9 +48,13 @@ class Agent(nn.Module):
         probs = Normal(action_mean, action_std)
         if action is None:
             action = probs.sample()
+        log_prob = probs.log_prob(action)
+
+        action = torch.tanh(action)  # SQUASH THAT BITCH IN (-1, 1)
+        log_prob -= torch.log(1 - action**2 + 1e-6)
         return (
             action,
-            probs.log_prob(action).sum(1),
+            log_prob.sum(1),
             probs.entropy().sum(1),
             self.critic(x),
         )

@@ -21,7 +21,7 @@ def parse_args():
         help="the name of this experiment")
     parser.add_argument("--gym-id", type=str, default="Custom-F16-model",
         help="the id of the gym environment")
-    parser.add_argument("--learning-rate", type=float, default=1e-1,
+    parser.add_argument("--learning-rate", type=float, default=3e-4,
         help="the learning rate of the optimizer")
     parser.add_argument("--seed", type=int, default=1,
         help="seed of the experiment")
@@ -61,7 +61,7 @@ def parse_args():
         help="the surrogate clipping coefficient")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
-    parser.add_argument("--ent-coef", type=float, default=0.01,
+    parser.add_argument("--ent-coef", type=float, default=0.0001,
         help="coefficient of the entropy")
     parser.add_argument("--vf-coef", type=float, default=0.5,
         help="coefficient of the value function")
@@ -89,6 +89,7 @@ def weight_histograms_conv2d(writer, step, weights, layer_number):
 
 def weight_histograms_linear(writer, step, weights, layer_number):
     flattened_weights = weights.flatten()
+    print(flattened_weights)
     tag = f"layer_{layer_number}"
     writer.add_histogram(tag, flattened_weights, global_step=step, bins="tensorflow")
 
@@ -185,17 +186,17 @@ if __name__ == "__main__":
                 action, logprob, _, value = agent.get_action_and_value(next_obs)
                 values[step] = value.flatten()
             actions[step] = action
+            action = env.rescale_action(action)
             logprobs[step] = logprob
 
-            action = action.cpu().numpy()[0]
             with open("logs/" + run_name + ".txt", "a") as f:
                 f.write(str(list(action)) + "\n")
             next_obs, reward, done, _, info = env.step(action)
             # print(f"{global_step}|\n{next_obs}")
             rewards[step] = torch.tensor(reward).to(device).view(-1)
-            next_obs, next_done = torch.Tensor([next_obs]).to(device), torch.Tensor(
-                [done]
-            ).to(device)
+            next_obs, next_done = torch.Tensor(np.array([next_obs])).to(
+                device
+            ), torch.Tensor(np.array([done])).to(device)
             if done:
                 print(
                     f"global_step={global_step}, episodic_return={info['total_return']}!, episodic_length={info['episode_length']}"
@@ -334,7 +335,6 @@ if __name__ == "__main__":
         var_y = np.var(y_true)
         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
         # logs
-        print("SPS:", int(global_step / (time.time() - start_time)))
         log_data = {
             "charts/learning_rate": optimizer.param_groups[0]["lr"],
             "charts/SPS": int(global_step / (time.time() - start_time)),
@@ -353,7 +353,7 @@ if __name__ == "__main__":
         if args.track:
             wandb.log(log_data)
 
-    agent.save(f"models/{run_name}")
+    agent.save(f"runs/models/{run_name}")
     writer.close()
     if args.track:
         wandb.finish()

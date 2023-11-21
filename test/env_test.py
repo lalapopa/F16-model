@@ -8,7 +8,7 @@ from F16model.data import plane
 import F16model.utils.plots as utils_plots
 
 approx_reward = 2480.2364
-random.seed(322)
+# random.seed(322)
 
 
 def test_F16():
@@ -22,6 +22,7 @@ def test_F16():
     while not done:
         # action = get_action()
         action = np.array([np.radians(random.uniform(-10, 10)), 0.3])
+        # action = u0
         state, reward, done, current_time, _ = env.step(action)  # give as numpy array
         if state.all():
             states.append(state)
@@ -36,6 +37,32 @@ def test_F16():
     print(f"|{states[0]}|{len(rewards) = }|{done = }|")
     denorm_states = list(map(F16.denormalize, states))
     utils_plots.result(denorm_states, actions, times, plot_name="test_F16")
+    utils_plots.algo(rewards, times, plot_name="test_F16_algo")
+
+
+def check_dispertion_reward():
+    ep_rewards = []
+    for i in range(100):
+        env = F16(norm_state=True)
+        actions = []
+        states = []
+        rewards = []
+        times = []
+        done = False
+        for _ in range(0, 512):
+            action = np.array([0, 0])
+            state, reward, done, current_time, _ = env.step(
+                action
+            )  # give as numpy array
+            if state.all():
+                states.append(state)
+                rewards.append(reward)
+                actions.append(action)
+                times.append(current_time)
+            if done:
+                break
+        ep_rewards.append(sum(rewards))
+        print(min(ep_rewards), max(ep_rewards), np.mean(ep_rewards))
 
 
 def test_trim_state_value():
@@ -48,16 +75,17 @@ def test_trim_state_value():
         250,
         np.radians(2.4839),
     ]
-    env = F16(x0, u0, norm_state=True)
+    #    env = F16(x0, u0, norm_state=True)
+    env = F16(norm_state=True)
     actions = []
     states = []
     rewards = []
     times = []
     done = False
     while not done:
-        # action = np.random.rand(2)
-        # action = np.array(u0)
-        action = np.array([0, 1])
+        action = np.random.rand(2)
+        #        action = np.array(u0)
+        # action = np.array([0, 1])
         state, reward, done, current_time, _ = env.step(action)  # give as numpy array
         if state.all():
             states.append(state)
@@ -120,6 +148,7 @@ def test_failed_run():
 
 if __name__ == "__main__":
     # test_run_episode()
-    test_F16()
+    # test_F16()
     # test_trim_state_value()
     # test_failed_run()
+    check_dispertion_reward()
