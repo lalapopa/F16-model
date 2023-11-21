@@ -2,20 +2,13 @@ import numpy as np
 import random
 import ast
 
-from F16model.model import F16, States
+from F16model.model import States
+from F16model.env import F16, get_trimmed_state_control
 from F16model.data import plane
-from F16model.model.env import run_episode, get_trimmed_state_control
 import F16model.utils.plots as utils_plots
 
 approx_reward = 2480.2364
 random.seed(322)
-
-
-def test_run_episode():
-    x0, u0 = get_trimmed_state_control()
-    states, actions, reward, t = run_episode(x0, u0)
-    utils_plots.result(states, actions, t, plot_name="test_run_episode")
-    print(f"TOTAL REWARD = {reward}/{approx_reward}, TOTAL TIME = {t[-1]}")
 
 
 def test_F16():
@@ -83,7 +76,7 @@ def test_trim_state_value():
 
 
 def test_failed_run():
-    file_name = "./logs/F16__ppo_train__1__1699893040_2f26.txt"
+    file_name = "./logs/F16__ppo_train__1__1700557367_93b4.txt"
     data = []
     with open(file_name, "r") as f:
         for line in f:
@@ -102,6 +95,7 @@ def test_failed_run():
     done = False
     i = 0
     for action in clipped_actions:
+        print(action)
         state, reward, done, current_time, _ = env.step(action)  # give as numpy array
         i += 1
         if state.all():
@@ -119,9 +113,9 @@ def test_failed_run():
         states[: i - 10],
         clipped_actions[: i - 10],
         times[: i - 10],
-        plot_name="test_F16_trim_value",
+        plot_name=f"fail_test_{file_name[-8:-4]}",
     )
-    utils_plots.algo(rewards, times, plot_name="test_F16_trim_value_algo")
+    utils_plots.algo(rewards, times, plot_name=f"fail_test_{file_name[-8:-4]}_reward")
 
 
 if __name__ == "__main__":

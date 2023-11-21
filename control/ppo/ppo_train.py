@@ -10,8 +10,8 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
-from model import Agent
-from F16model.model import F16
+from ppo_model import Agent
+from F16model.env import F16
 
 
 def parse_args():
@@ -19,11 +19,11 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
         help="the name of this experiment")
-    parser.add_argument("--gym-id", type=str, default="CartPole-v1",
+    parser.add_argument("--gym-id", type=str, default="Custom-F16-model",
         help="the id of the gym environment")
-    parser.add_argument("--learning-rate", type=float, default=3.0e-4,
+    parser.add_argument("--learning-rate", type=float, default=1e-1,
         help="the learning rate of the optimizer")
-    parser.add_argument("--seed", type=int, default=2,
+    parser.add_argument("--seed", type=int, default=1,
         help="seed of the experiment")
     parser.add_argument("--total-timesteps", type=int, default=1000000,
         help="total timesteps of the experiments")
@@ -61,7 +61,7 @@ def parse_args():
         help="the surrogate clipping coefficient")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
-    parser.add_argument("--ent-coef", type=float, default=0.0,
+    parser.add_argument("--ent-coef", type=float, default=0.01,
         help="coefficient of the entropy")
     parser.add_argument("--vf-coef", type=float, default=0.5,
         help="coefficient of the value function")
@@ -75,6 +75,36 @@ def parse_args():
     # fmt: on
     return args
 
+
+def weight_histograms_conv2d(writer, step, weights, layer_number):
+    weights_shape = weights.shape
+    num_kernels = weights_shape[0]
+    for k in range(num_kernels):
+        flattened_weights = weights[k].flatten()
+        tag = f"layer_{layer_number}/kernel_{k}"
+        writer.add_histogram(
+            tag, flattened_weights, global_step=step, bins="tensorflow"
+        )
+
+
+def weight_histograms_linear(writer, step, weights, layer_number):
+    flattened_weights = weights.flatten()
+    tag = f"layer_{layer_number}"
+    writer.add_histogram(tag, flattened_weights, global_step=step, bins="tensorflow")
+
+
+def weight_histograms(writer, step, model):
+    # Iterate over all model layers
+    for layer_number in range(len(model)):
+        # Get layer
+        layer = model[layer_number]
+        # Compute weight histograms for appropriate layer
+        if isinstance(layer, nn.Conv2d):
+            weights = layer.weight
+            weight_histograms_conv2d(writer, step, weights, layer_number)
+        elif isinstance(layer, nn.Linear):
+            weights = layer.weight
+            weight_histograms_linear(writer, step, weights, layer_number)
 
 
 if __name__ == "__main__":
@@ -118,6 +148,7 @@ if __name__ == "__main__":
     obs_size = (env.reset()).shape[0]
 
     agent = Agent(obs_size, action_size).to(device)
+    weight_histograms(writer, 0, agent.actor_mean)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 
     # ALGO Logic: Storage setup
@@ -137,7 +168,7 @@ if __name__ == "__main__":
         # Annealing the rate if instructed to do so.
         obs_init = env.reset()
         with open("logs/" + run_name + ".txt", "w") as f:
-            f.write(str(list(env.init_state.to_array()))+"\n")
+            f.write(str(list(env.init_state.to_array())) + "\n")
         next_obs = torch.Tensor(obs_init).to(device).reshape(-1, obs_init.shape[0])
         if args.anneal_lr:
             frac = 1.0 - (update - 1.0) / num_updates
@@ -318,6 +349,7 @@ if __name__ == "__main__":
         }
         for name, value in log_data.items():
             writer.add_scalar(name, value, global_step)
+            weight_histograms(writer, global_step, agent.actor_mean)
         if args.track:
             wandb.log(log_data)
 
