@@ -60,7 +60,7 @@ class F16:
         self.clock += self.dt
         self.check_state(state)
 
-        reward = self.compute_reward(state, action)
+        reward = self.compute_reward(state)
         out_state = self.state_transform(state)
         self.total_return += reward
 
@@ -75,8 +75,7 @@ class F16:
             self.prev_done = True
         return out_state, reward, self.done, self.clock, info
 
-    def compute_reward(self, state, action):
-        V_ref_signal = self.init_state.V
+    def compute_reward(self, state):
         tracking_ref = np.array(
             [
                 self.ref_signal.theta_ref[self.episode_length],
@@ -98,15 +97,31 @@ class F16:
         return reward
 
     def state_transform(self, state):
+        """ 
+        Return states are : 
+        Oy
+        wz
+        theta
+        V
+        alpha
+        theta - theta_ref
+        V - V_ref
+        """
         state_short = {
             k: vars(state)[k]
             for k, _ in plane.state_restrictions.items()
             if k in vars(state)
         }  # take keys that defines in state_restrictions from `State` class
-        state_short = np.array(list(state_short.values()))
+        state_short = list(state_short.values())
+
         if self.norm_state:
             state_short = F16.normalize(state_short)
-        return state_short
+
+        theta_err = state.theta - self.ref_signal.theta_ref[self.episode_length]
+        v_err = float(state.V - self.init_state.V)
+        state_short.append(theta_err)
+        state_short.append(v_err)
+        return np.array(state_short)
 
     def check_state(self, state):
         if state.Oy <= plane.state_restrictions["Oy"][0] - 1000:
@@ -122,7 +137,7 @@ class F16:
         norm_values = []
         for i, values in enumerate(plane.state_restrictions.values()):
             norm_values.append(minmaxscaler(truncated_state[i], values[0], values[1]))
-        return np.array(norm_values)
+        return norm_values
 
     def denormalize(state_norm):
         norm_values = []
@@ -132,19 +147,23 @@ class F16:
                     state_norm[i], values[0], values[1], inverse_transform=True
                 )
             )
-        return np.array(norm_values)
+        norm_values = np.array(norm_values)
+        if i < len(state_norm)-1:
+            additional_states = state_norm[i+1:]
+            norm_values = np.concatenate((norm_values, additional_states)) 
+        return norm_values
 
     def reset(self):
         self.init_state = get_random_state()
         self.model = F16model(self.init_state, self.dt)
         self.ref_signal = ReferenceSignal(0, self.dt, self.tn)
-        init_state = self.model.reset()
-        init_state = self.state_transform(init_state)
+        self.init_state = self.model.reset()
+        self.episode_length = 0
         self.total_return = 0
-        self.episode_length = 1
         self.clock = 0
         self.done = False
-        return init_state
+        out_state = self.state_transform(self.init_state)
+        return out_state
 
     def rescale_action(self, action):
         """

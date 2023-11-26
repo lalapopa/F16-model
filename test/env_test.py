@@ -25,15 +25,16 @@ def test_F16():
     x0, u0 = get_trimmed_state_control()
     ENV_CONFIG["init_state"] = x0
     ENV_CONFIG["init_control"] = u0
+    n = 512
     env = F16(ENV_CONFIG)
     actions = []
     states = []
     rewards = []
     times = []
     done = False
-
     start_time = time.time()
-    for i in range(0, 512):
+
+    for i in range(0, n):
         # action = get_action()
         # action = np.array([np.radians(random.uniform(-10, 10)), 0.3])
         action = u0
@@ -49,7 +50,7 @@ def test_F16():
     print(f"|{states[0]}|{len(rewards) = }|{done = }|")
     print("--- %s seconds ---" % (time.time() - start_time))
     denorm_states = list(map(F16.denormalize, states))
-    utils_plots.result(denorm_states, actions, times, plot_name="test_F16")
+    utils_plots.result(denorm_states, actions, times, plot_name="test_F16", ref_signal=env.ref_signal.theta_ref[:n])
     utils_plots.algo(rewards, times, plot_name="test_F16_algo")
 
 
@@ -108,9 +109,7 @@ def test_trim_state_value():
             times.append(current_time)
         if done:
             break
-    print(
-        f"TOTAL REWARD = {round(sum(rewards), 4)}/{approx_reward}, TOTAL TIME = {times[-1]}"
-    )
+    print(f"TOTAL REWARD = {round(sum(rewards), 4)}, TOTAL TIME = {times[-1]}")
     print(f"|{states[0]}|{len(rewards) = }|{done = }|")
     denorm_states = list(map(F16.denormalize, states))
     utils_plots.result(denorm_states, actions, times, plot_name="test_F16_trim_value")
@@ -148,7 +147,7 @@ def test_failed_run():
             break
 
     print(
-        f"TOTAL REWARD = {round(sum(rewards), 4)}/{approx_reward}, TOTAL TIME = {times[-1]}"
+        f"TOTAL REWARD = {round(sum(rewards), 4)}, TOTAL TIME = {times[-1]}"
     )
     print(f"|{states[0]}|{len(rewards) = }|{done = }|")
     utils_plots.result(
@@ -160,41 +159,12 @@ def test_failed_run():
     utils_plots.algo(rewards, times, plot_name=f"fail_test_{file_name[-8:-4]}_reward")
 
 
-def parallel_env_runner():
-    #    env = [F16(), F16(), F16()]
-    env = [F16(), F16()]
-    #    env = [F16(), F16(), F16(), F16(), F16(), F16()]
-    envs = ParallelEnvRunner(env)
-    test_act = np.array([0, 0])
-    res = []
-    res_actions = []
-    start_time = time.time()
-    for i in range(0, 500):
-        actions = [test_act for i in range(len(env))]
-        mul_env_res = envs.step(actions)
-        res_actions.append(actions)
-        res.append(mul_env_res)
-    env_num = 0
-    print("--- %s seconds ---" % (time.time() - start_time))
-    # states = [step_res[env_num][0] for step_res in res]
-    # actions = [action_res[env_num] for action_res in res_actions]
-    # times = [step_res[env_num][3] for step_res in res]
-
-
-#    utils_plots.result(
-#        states,
-#        actions,
-#        times,
-#        plot_name=f"env_{env_num}",
-#    )
-
-
 if __name__ == "__main__":
     # test_run_episode()
     # test_trim_state_value()
     # test_failed_run()
-    #  test_F16()
-    check_dispertion_reward()
+    test_F16()
+    # check_dispertion_reward()
 #    parallel_env_runner()
 #    with Profile() as profile:
 #        for i in range(0, 1):

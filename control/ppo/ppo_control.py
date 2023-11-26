@@ -10,7 +10,7 @@ import F16model.utils.plots as utils_plots
 import F16model.utils.control as utils_control
 from ppo_model import Agent
 
-model_name = "runs/models/F16__ppo_train__1__1700912494_244b"
+model_name = "runs/models/F16__ppo_train__1__1701026713_705a"
 CONST_STEP = True
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ENV_CONFIG = {
