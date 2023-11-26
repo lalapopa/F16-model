@@ -2,30 +2,35 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from make_enviroment import Env, get_trimmed_state_control
+
+from F16model.model import States
+from F16model.env import F16, get_trimmed_state_control
+from F16model.data import plane
 import F16model.utils.plots as utils_plots
 import F16model.utils.control as utils_control
-from model import Agent
+from ppo_model import Agent
 
-
-model_name = "models/F16__ppo_train__1__1698235941_9f8d"
-
-
+model_name = "runs/models/F16__ppo_train__1__1700912494_244b"
 CONST_STEP = True
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+ENV_CONFIG = {
+    "dt": 0.01,
+    "tn": 10,
+    "norm_state": True,
+    "debug_state": False,
+}
+
 
 def run_sim(x0, u0, max_episode=2000):
-    env = Env(x0, u0)
-
+    env = F16(ENV_CONFIG)
     action_size = 2
     state = env.reset()
     agent = Agent(state.shape[0], action_size)
     agent.load(model_name)
 
     t0 = 0
-    dt = env.dt
-    tn = env.tn
+    dt = ENV_CONFIG["dt"]
+    tn = ENV_CONFIG["tn"]
     t = np.arange(t0, tn + dt, dt)
 
     # Control Define
@@ -41,27 +46,25 @@ def run_sim(x0, u0, max_episode=2000):
     actions = []
     states = []
     rewards = []
-    times = []
-    for i, _ in enumerate(t):
+    for _ in t:
         state = torch.Tensor(state).to(device).reshape(-1, state.shape[0])
-
         action, _, _, _ = agent.get_action_and_value(state)
-        action = action.cpu().numpy()[0]
-        action = np.clip(action, np.radians(-25), np.radians(25))
-        state, reward, done, current_time, _ = env.step(action)
+
+        action = env.rescale_action(action)
+        state, reward, done, _, _ = env.step(action)
         if state.all():
             states.append(state)
             rewards.append(reward)
             actions.append(action)
-            times.append(current_time)
         if done:
             print("FOK")
             break
-    return states, actions, sum(rewards), times
+    states = list(map(F16.denormalize, states))
+    return states, actions, env.ref_signal, sum(rewards), t
 
 
 if __name__ == "__main__":
     x0, u0 = get_trimmed_state_control()
-    states, actions, r, t = run_sim(x0, u0)
+    states, actions, ref_signal, r, t = run_sim(x0, u0)
     print(f"total reward {r}")
-    utils_plots.result(states, actions, t, "test_name")
+    utils_plots.result(states, actions, t[1:-1], "test_agent", ref_signal)

@@ -1,28 +1,42 @@
 import numpy as np
 import random
 import ast
+import time
+from cProfile import Profile
+from pstats import SortKey, Stats
 
 from F16model.model import States
 from F16model.env import F16, get_trimmed_state_control
 from F16model.data import plane
 import F16model.utils.plots as utils_plots
 
-approx_reward = 2480.2364
 # random.seed(322)
+
+ENV_CONFIG = {
+    "dt": 0.01,
+    "tn": 10,
+    "norm_state": False,
+    "debug_state": False,
+}
 
 
 def test_F16():
+    ENV_CONFIG["norm_state"] = True
     x0, u0 = get_trimmed_state_control()
-    env = F16(x0, u0, norm_state=True)
+    ENV_CONFIG["init_state"] = x0
+    ENV_CONFIG["init_control"] = u0
+    env = F16(ENV_CONFIG)
     actions = []
     states = []
     rewards = []
     times = []
     done = False
-    while not done:
+
+    start_time = time.time()
+    for i in range(0, 512):
         # action = get_action()
-        action = np.array([np.radians(random.uniform(-10, 10)), 0.3])
-        # action = u0
+        # action = np.array([np.radians(random.uniform(-10, 10)), 0.3])
+        action = u0
         state, reward, done, current_time, _ = env.step(action)  # give as numpy array
         if state.all():
             states.append(state)
@@ -31,10 +45,9 @@ def test_F16():
             times.append(current_time)
         if done:
             break
-    print(
-        f"TOTAL REWARD = {round(sum(rewards), 4)}/{approx_reward}, TOTAL TIME = {times[-1]}"
-    )
+    print(f"TOTAL REWARD = {round(sum(rewards), 4)}, TOTAL TIME = {times[-1]}")
     print(f"|{states[0]}|{len(rewards) = }|{done = }|")
+    print("--- %s seconds ---" % (time.time() - start_time))
     denorm_states = list(map(F16.denormalize, states))
     utils_plots.result(denorm_states, actions, times, plot_name="test_F16")
     utils_plots.algo(rewards, times, plot_name="test_F16_algo")
@@ -43,14 +56,15 @@ def test_F16():
 def check_dispertion_reward():
     ep_rewards = []
     for i in range(100):
-        env = F16(norm_state=True)
+        env = F16(ENV_CONFIG)
         actions = []
         states = []
         rewards = []
         times = []
         done = False
         for _ in range(0, 512):
-            action = np.array([0, 0])
+            # action = np.array([0, 0])
+            action = np.array([np.radians(random.uniform(-10, 10)), 0.3])
             state, reward, done, current_time, _ = env.step(
                 action
             )  # give as numpy array
@@ -146,9 +160,43 @@ def test_failed_run():
     utils_plots.algo(rewards, times, plot_name=f"fail_test_{file_name[-8:-4]}_reward")
 
 
+def parallel_env_runner():
+    #    env = [F16(), F16(), F16()]
+    env = [F16(), F16()]
+    #    env = [F16(), F16(), F16(), F16(), F16(), F16()]
+    envs = ParallelEnvRunner(env)
+    test_act = np.array([0, 0])
+    res = []
+    res_actions = []
+    start_time = time.time()
+    for i in range(0, 500):
+        actions = [test_act for i in range(len(env))]
+        mul_env_res = envs.step(actions)
+        res_actions.append(actions)
+        res.append(mul_env_res)
+    env_num = 0
+    print("--- %s seconds ---" % (time.time() - start_time))
+    # states = [step_res[env_num][0] for step_res in res]
+    # actions = [action_res[env_num] for action_res in res_actions]
+    # times = [step_res[env_num][3] for step_res in res]
+
+
+#    utils_plots.result(
+#        states,
+#        actions,
+#        times,
+#        plot_name=f"env_{env_num}",
+#    )
+
+
 if __name__ == "__main__":
     # test_run_episode()
-    # test_F16()
     # test_trim_state_value()
     # test_failed_run()
+    #  test_F16()
     check_dispertion_reward()
+#    parallel_env_runner()
+#    with Profile() as profile:
+#        for i in range(0, 1):
+#            test_F16()
+#        (Stats(profile).strip_dirs().sort_stats(SortKey.TIME).print_stats())

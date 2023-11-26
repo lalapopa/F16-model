@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 
 
-def result(x_array, u_array, time, plot_name=None):
+def result(x_array, u_array, time, plot_name=None, ref_signal=None):
     plt.subplot(6, 1, 1)
     plt.plot(time, np.degrees([i[0] for i in u_array]), "-r")
     plt.grid()
@@ -19,6 +19,8 @@ def result(x_array, u_array, time, plot_name=None):
     plt.subplot(6, 1, 3)
     plt.plot(time, np.degrees([i[2] for i in x_array]), "-b", label=r"$\theta$")
     plt.plot(time, np.degrees([i[4] for i in x_array]), "--m", label=r"$\alpha$")
+    if ref_signal:
+        plt.plot(time, np.degrees(ref_signal.theta_ref[:-1]), ":")
     plt.legend()
     plt.grid()
     plt.xlim(time[0], time[-1])
@@ -32,6 +34,9 @@ def result(x_array, u_array, time, plot_name=None):
 
     plt.subplot(6, 1, 5)
     plt.plot(time, [i[3] for i in x_array], "-b")
+    if ref_signal:
+        ref_speed = x_array[0][3]
+        plt.plot(time, [ref_speed for i in time], ":")
     plt.ylabel("$V$, m/s")
     plt.grid()
     plt.xlim(time[0], time[-1])

@@ -13,6 +13,13 @@ from torch.utils.tensorboard import SummaryWriter
 from ppo_model import Agent
 from F16model.env import F16
 
+ENV_CONFIG = {
+    "dt": 0.01,
+    "tn": 10,
+    "norm_state": True,
+    "debug_state": False,
+}
+
 
 def parse_args():
     # fmt: off
@@ -25,7 +32,7 @@ def parse_args():
         help="the learning rate of the optimizer")
     parser.add_argument("--seed", type=int, default=1,
         help="seed of the experiment")
-    parser.add_argument("--total-timesteps", type=int, default=1000000,
+    parser.add_argument("--total-timesteps", type=int, default=3000000,
         help="total timesteps of the experiments")
     parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, `torch.backends.cudnn.deterministic=False`")
@@ -61,7 +68,7 @@ def parse_args():
         help="the surrogate clipping coefficient")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
-    parser.add_argument("--ent-coef", type=float, default=0.0001,
+    parser.add_argument("--ent-coef", type=float, default=0.001,
         help="coefficient of the entropy")
     parser.add_argument("--vf-coef", type=float, default=0.5,
         help="coefficient of the value function")
@@ -89,7 +96,6 @@ def weight_histograms_conv2d(writer, step, weights, layer_number):
 
 def weight_histograms_linear(writer, step, weights, layer_number):
     flattened_weights = weights.flatten()
-    print(flattened_weights)
     tag = f"layer_{layer_number}"
     writer.add_histogram(tag, flattened_weights, global_step=step, bins="tensorflow")
 
@@ -144,7 +150,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    env = F16(norm_state=True)
+    env = F16(ENV_CONFIG)
     action_size = 2  # stab movement, throttle
     obs_size = (env.reset()).shape[0]
 
@@ -352,6 +358,9 @@ if __name__ == "__main__":
             weight_histograms(writer, global_step, agent.actor_mean)
         if args.track:
             wandb.log(log_data)
+        if round(global_step, -3) % 10000 == 0:
+            print(f"Saving model after {global_step}")
+            agent.save(f"runs/models/{run_name}")
 
     agent.save(f"runs/models/{run_name}")
     writer.close()
