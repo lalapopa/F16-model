@@ -1,24 +1,23 @@
-# F16 модель
+# Использование PPO в задаче управления самолетом в продольном канале 
 
-![Py_Ver](https://img.shields.io/badge/Python-3.9.6-brightgreen?style=plastic&color=blue)
+![Py_Ver](https://img.shields.io/badge/Python-3.9-brightgreen?style=plastic&color=blue)
 
-Use:
-`F16model.model.env.F16` - gym like env 
+## Описание
 
-## GUI для нахождения тримированного значения в продольном канале
+В данном репозитории находится реализация работы:
+[Todo: paper link].
 
-### Установка 
+`F16model` --- находится нелинейная модель F16 для продольного канала.
+`control` --- реализация RL алгоритмов
+`logs` --- туда сохраняются логи
+`runs` --- логгирование при обучении алгоритмов 
+`runs\models` --- веса моделей которые можно поднять
+`apps\trim-app.py` --- простенькая гуишка для нахождения балансировочного состояния 
 
-Из исходника: 
+## Установка 
 
-1. `git clone https://github.com/lalapopa/F16-model`
-2. `cd F16-model`
-3. `pip3 install -r requirements.txt`
-4. `pyinstaller -F -w --collect-submodules ".\F16model\" .\trim-app.py`
-5. EXE файл для Windows будет лежать в папке `.\dist\`
-
-Скачать собранный EXE:
-
-[URL](https://github.com/lalapopa/F16-model/releases/tag/v0.00)
-
+```bash
+pip install -r requirements.txt
+python setup.py develop
+```
 
