@@ -14,7 +14,7 @@ import F16model.utils.plots as utils_plots
 
 ENV_CONFIG = {
     "dt": 0.01,
-    "tn": 10,
+    "tn": 20,
     "norm_state": False,
     "debug_state": False,
 }
@@ -25,8 +25,9 @@ def test_F16():
     x0, u0 = get_trimmed_state_control()
     ENV_CONFIG["init_state"] = x0
     ENV_CONFIG["init_control"] = u0
-    n = 512
+    n = 1000 
     env = F16(ENV_CONFIG)
+#    env.reset()
     actions = []
     states = []
     rewards = []
@@ -47,7 +48,7 @@ def test_F16():
         if done:
             break
     print(f"TOTAL REWARD = {round(sum(rewards), 4)}, TOTAL TIME = {times[-1]}")
-    print(f"|{states[0]}|{len(rewards) = }|{done = }|")
+#    print(f"|{states[0]}|{len(rewards) = }|{done = }|")
     print("--- %s seconds ---" % (time.time() - start_time))
     denorm_states = list(map(F16.denormalize, states))
     utils_plots.result(denorm_states, actions, times, plot_name="test_F16", ref_signal=env.ref_signal.theta_ref[:n])

@@ -6,17 +6,14 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
-from ppo_model import Agent
-from F16model.env import F16
-from utils import parse_args
+from control.ppo.ppo_model import Agent
+import gymnasium as gym
+from control.ppo.utils import parse_args
 
 ENV_CONFIG = {
-    "dt": 0.01,
-    "tn": 20,
-    "norm_state": True,
-    "debug_state": False,
+    "gym-id": "LunarLander-v2",
+    "capture-video": False, 
 }
-
 
 def weight_histograms_conv2d(writer, step, weights, layer_number):
     weights_shape = weights.shape
@@ -49,10 +46,20 @@ def weight_histograms(writer, step, model):
             weight_histograms_linear(writer, step, weights, layer_number)
 
 
+def make_env(gym_id, seed, idx, capture_video, run_name):
+    env = gym.make(gym_id, continuous=True)
+    env = gym.wrappers.RecordEpisodeStatistics(env)
+    if capture_video:
+        if idx == 0:
+            env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+    env.action_space.seed(seed)
+    env.observation_space.seed(seed)
+    return env
+
+
 if __name__ == "__main__":
     args = parse_args()
-    run_name = f"F16__{args.exp_name}__{args.seed}__{str(int(time.time()))}_{('%032x' % random.getrandbits(128))[:4]}"
-    print(f"Start running: {run_name}")
+    run_name = f"LunarLander_test__{args.exp_name}__{args.seed}__{str(int(time.time()))}_{('%032x' % random.getrandbits(128))[:4]}"
     if args.track:
         import wandb
 
@@ -85,9 +92,10 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    env = F16(ENV_CONFIG)
-    action_size = 2  # stab movement, throttle
-    obs_size = (env.reset()).shape[0]
+
+    env = make_env(ENV_CONFIG["gym-id"], args.seed, 1, ENV_CONFIG["capture-video"], run_name)
+    action_size = env.action_space.shape[0] 
+    obs_size = env.observation_space.shape[0] 
 
     agent = Agent(obs_size, action_size).to(device)
     weight_histograms(writer, 0, agent.actor_mean)
@@ -106,11 +114,11 @@ if __name__ == "__main__":
 
     next_done = torch.zeros(args.num_envs).to(device)
     num_updates = args.total_timesteps // args.batch_size
+
+    print(f"Start running: {run_name}")
     for update in range(1, num_updates + 1):
         # Annealing the rate if instructed to do so.
-        obs_init = env.reset()
-        with open("logs/" + run_name + ".txt", "w") as f:
-            f.write(str(list(env.init_state.to_array())) + "\n")
+        obs_init = env.reset()[0]
         next_obs = torch.Tensor(obs_init).to(device).reshape(-1, obs_init.shape[0])
         if args.anneal_lr:
             frac = 1.0 - (update - 1.0) / num_updates
@@ -127,43 +135,31 @@ if __name__ == "__main__":
                 action, logprob, _, value = agent.get_action_and_value(next_obs)
                 values[step] = value.flatten()
             actions[step] = action
-            action = env.rescale_action(action)
             logprobs[step] = logprob
 
-            with open("logs/" + run_name + ".txt", "a") as f:
-                f.write(str(list(action)) + "\n")
-            next_obs, reward, done, _, info = env.step(action)
-            # print(f"{global_step}|\n{next_obs}")
+            next_obs, reward, done, _, info = env.step(action.cpu().numpy()[0])
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = torch.Tensor(np.array([next_obs])).to(
                 device
             ), torch.Tensor(np.array([done])).to(device)
+
             if done:
-                print(
-                    f"global_step={global_step}, episodic_return={info['total_return']}!, episodic_length={info['episode_length']}"
-                )
-                writer.add_scalar(
-                    "charts/episodic_return", info["total_return"], global_step
-                )
-                writer.add_scalar(
-                    "charts/episodic_length", info["episode_length"], global_step
-                )
+                print(f"global_step={global_step}, episodic_return={sum(rewards)}")
+                writer.add_scalar("charts/episodic_return", sum(rewards), global_step)
+                writer.add_scalar("charts/episodic_length", step, global_step)
                 if args.track:
-                    wandb.log({"charts/episodic_return": info["total_return"]})
-                    wandb.log({"charts/episodic_length": info["episode_length"]})
+                    wandb.log({"charts/episodic_return": sum(rewards)})
+                    wandb.log({"charts/episodic_length": step})
+                obs_init = env.reset()[0]
+                next_obs = torch.Tensor(obs_init).to(device).reshape(-1, obs_init.shape[0])
+
         if not done:
-            print(
-                f"global_step={global_step}, episodic_return={info['total_return']}!, episodic_length={info['episode_length']}"
-            )
-            writer.add_scalar(
-                "charts/episodic_return", info["total_return"], global_step
-            )
-            writer.add_scalar(
-                "charts/episodic_length", info["episode_length"], global_step
-            )
+            print(f"global_step={global_step}, episodic_return={sum(rewards)}")
+            writer.add_scalar("charts/episodic_return", sum(rewards), global_step)
+            writer.add_scalar("charts/episodic_length", step, global_step)
             if args.track:
-                wandb.log({"charts/episodic_return": info["total_return"]})
-                wandb.log({"charts/episodic_length": info["episode_length"]})
+                wandb.log({"charts/episodic_return": sum(rewards)})
+                wandb.log({"charts/episodic_length": step})
 
         print(f"|{update}|{num_updates + 1}|")
         # bootstrap value if not done

@@ -83,7 +83,7 @@ class F16:
             ]
         )
         tracking_err = tracking_ref - np.array([state.theta, state.V])
-        tracking_Q = np.array([1 / np.radians(30), 1 / 1000])
+        tracking_Q = np.array([1 / 1, 1 / 100])
 
         reward_vec = np.abs(
             np.clip(

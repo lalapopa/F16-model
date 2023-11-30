@@ -1,7 +1,6 @@
 import numpy as np
 
-from F16model.model import F16
-from F16model.model.env import get_trimmed_state_control
+from F16model.model import F16, get_trimmed_state_control
 import F16model.utils.plots as utils_plots
 import F16model.utils.control as utils_control
 
