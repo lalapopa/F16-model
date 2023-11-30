@@ -7,7 +7,7 @@ import numpy as np
 
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
-    torch.nn.init.xavier_normal_(layer.weight)
+    torch.nn.init.xavier_uniform_(layer.weight)
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
 
@@ -20,19 +20,19 @@ class Agent(nn.Module):
         self.critic = nn.Sequential(
             layer_init(nn.Linear(obs_shape, 64)),
             nn.LayerNorm(64),
-            nn.Tanh(),
+            nn.ReLU(),
             layer_init(nn.Linear(64, 64)),
             nn.LayerNorm(64),
-            nn.Tanh(),
+            nn.ReLU(),
             layer_init(nn.Linear(64, 1), std=1.0),
         )
         self.actor_mean = nn.Sequential(
             layer_init(nn.Linear(obs_shape, 64)),
             nn.LayerNorm(64),
-            nn.Tanh(),
+            nn.ReLU(),
             layer_init(nn.Linear(64, 64)),
             nn.LayerNorm(64),
-            nn.Tanh(),
+            nn.ReLU(),
             layer_init(nn.Linear(64, action_shape), std=0.001),
         )
         self.actor_logstd = nn.Parameter(torch.zeros(1, action_shape))

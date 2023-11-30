@@ -18,9 +18,9 @@ lef = 0
 sb = 0
 
 state_restrictions = {
-    "Oy": [2000, 15000],
-    "wz": [np.radians(-20), np.radians(20)],
-    "theta": [np.radians(-20), np.radians(20)],
-    "V": [100, 600],
-    "alpha": [np.radians(-10), np.radians(10)],
+    "Oy": [2000, 6000],
+    "wz": [np.radians(-5), np.radians(5)],
+    "theta": [np.radians(-10), np.radians(10)],
+    "V": [90, 300],
+    "alpha": [np.radians(-5), np.radians(5)],
 }

@@ -124,10 +124,12 @@ class F16:
         return np.array(state_short)
 
     def check_state(self, state):
-        if state.Oy <= plane.state_restrictions["Oy"][0] - 1000:
+        if state.Oy <= 300:
+            self.total_return = -1000
             self.done = True
 
-        if state.Oy >= plane.state_restrictions["Oy"][1] + 1000:
+        if state.Oy >= 30000:
+            self.total_return = -1000
             self.done = True
 
         if self.episode_length == (self.tn / self.dt) - 1:
@@ -202,7 +204,7 @@ def get_random_state():
     return States(
         Ox=0,
         Oy=np.random.uniform(
-            plane.state_restrictions["Oy"][0] + 500,
+            plane.state_restrictions["Oy"][0] + 100,
             plane.state_restrictions["Oy"][1] - 1000,
             1,
         )[0],
@@ -211,7 +213,7 @@ def get_random_state():
         )[0],
         theta=alpha_angle_random,
         V=np.random.uniform(
-            plane.state_restrictions["V"][0] + 50, plane.state_restrictions["V"][1], 1
+            plane.state_restrictions["V"][0], plane.state_restrictions["V"][1], 1
         )[0],
         alpha=alpha_angle_random,
         stab=np.random.uniform(-plane.maxabsstab, plane.maxabsstab, 1)[0],
