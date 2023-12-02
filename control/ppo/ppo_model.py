@@ -7,7 +7,7 @@ import numpy as np
 
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
-    torch.nn.init.xavier_uniform_(layer.weight)
+    torch.nn.init.orthogonal_(layer.weight, std)
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
 
@@ -18,22 +18,18 @@ class Agent(nn.Module):
     def __init__(self, obs_shape, action_shape):
         super(Agent, self).__init__()
         self.critic = nn.Sequential(
-            layer_init(nn.Linear(obs_shape, 64)),
-            nn.LayerNorm(64),
-            nn.ReLU(),
-            layer_init(nn.Linear(64, 64)),
-            nn.LayerNorm(64),
-            nn.ReLU(),
-            layer_init(nn.Linear(64, 1), std=1.0),
+            layer_init(nn.Linear(obs_shape, 128)),
+            nn.Tanh(),
+            layer_init(nn.Linear(128, 128)),
+            nn.Tanh(),
+            layer_init(nn.Linear(128, 1), std=1.0),
         )
         self.actor_mean = nn.Sequential(
             layer_init(nn.Linear(obs_shape, 64)),
-            nn.LayerNorm(64),
-            nn.ReLU(),
+            nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
-            nn.LayerNorm(64),
-            nn.ReLU(),
-            layer_init(nn.Linear(64, action_shape), std=0.001),
+            nn.Tanh(),
+            layer_init(nn.Linear(64, action_shape), std=0.01),
         )
         self.actor_logstd = nn.Parameter(torch.zeros(1, action_shape))
 
@@ -44,20 +40,11 @@ class Agent(nn.Module):
         action_mean = self.actor_mean(x)
         action_logstd = self.actor_logstd.expand_as(action_mean)
         action_std = torch.exp(action_logstd)
-        #        print(f"|{action_mean = } | {action_std = }|")
         probs = Normal(action_mean, action_std)
         if action is None:
             action = probs.sample()
         log_prob = probs.log_prob(action)
-
-        action = torch.tanh(action)  # SQUASH THAT BITCH IN (-1, 1)
-        log_prob -= torch.log(1 - action**2 + 1e-6)
-        return (
-            action,
-            log_prob.sum(1),
-            probs.entropy().sum(1),
-            self.critic(x),
-        )
+        return action, log_prob.sum(1), probs.entropy().sum(1), self.critic(x)
 
     def save(self, path_name):
         try:
