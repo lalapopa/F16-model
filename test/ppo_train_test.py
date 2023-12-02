@@ -7,54 +7,27 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
 from control.ppo.ppo_model import Agent
-import gymnasium as gym
-from control.ppo.utils import parse_args
+import gym
+from control.ppo.utils import parse_args, weight_histograms
 
 ENV_CONFIG = {
     "gym-id": "LunarLander-v2",
-    "capture-video": False, 
+    "capture-video": False,
 }
-
-def weight_histograms_conv2d(writer, step, weights, layer_number):
-    weights_shape = weights.shape
-    num_kernels = weights_shape[0]
-    for k in range(num_kernels):
-        flattened_weights = weights[k].flatten()
-        tag = f"layer_{layer_number}/kernel_{k}"
-        writer.add_histogram(
-            tag, flattened_weights, global_step=step, bins="tensorflow"
-        )
-
-
-def weight_histograms_linear(writer, step, weights, layer_number):
-    flattened_weights = weights.flatten()
-    tag = f"layer_{layer_number}"
-    writer.add_histogram(tag, flattened_weights, global_step=step, bins="tensorflow")
-
-
-def weight_histograms(writer, step, model):
-    # Iterate over all model layers
-    for layer_number in range(len(model)):
-        # Get layer
-        layer = model[layer_number]
-        # Compute weight histograms for appropriate layer
-        if isinstance(layer, nn.Conv2d):
-            weights = layer.weight
-            weight_histograms_conv2d(writer, step, weights, layer_number)
-        elif isinstance(layer, nn.Linear):
-            weights = layer.weight
-            weight_histograms_linear(writer, step, weights, layer_number)
 
 
 def make_env(gym_id, seed, idx, capture_video, run_name):
-    env = gym.make(gym_id, continuous=True)
-    env = gym.wrappers.RecordEpisodeStatistics(env)
-    if capture_video:
-        if idx == 0:
-            env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-    env.action_space.seed(seed)
-    env.observation_space.seed(seed)
-    return env
+    def thunk():
+        env = gym.make(gym_id, continuous=True)
+        env = gym.wrappers.RecordEpisodeStatistics(env)
+        if capture_video:
+            if idx == 0:
+                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+        env.action_space.seed(seed)
+        env.observation_space.seed(seed)
+        return env
+
+    return thunk
 
 
 if __name__ == "__main__":
@@ -83,7 +56,6 @@ if __name__ == "__main__":
         % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
 
-    # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -91,12 +63,21 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
-    # env setup
+    envs = gym.vector.SyncVectorEnv(
+        [
+            make_env(
+                ENV_CONFIG["gym-id"],
+                args.seed + i,
+                i,
+                ENV_CONFIG["capture-video"],
+                run_name,
+            )
+            for i in range(args.num_envs)
+        ]
+    )
 
-    env = make_env(ENV_CONFIG["gym-id"], args.seed, 1, ENV_CONFIG["capture-video"], run_name)
-    action_size = env.action_space.shape[0] 
-    obs_size = env.observation_space.shape[0] 
-
+    action_size = np.array(envs.single_action_space.shape).prod()
+    obs_size = np.array(envs.single_observation_space.shape).prod()
     agent = Agent(obs_size, action_size).to(device)
     weight_histograms(writer, 0, agent.actor_mean)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
@@ -108,18 +89,18 @@ if __name__ == "__main__":
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    # TRY NOT TO MODIFY: start the game
+
     global_step = 0
     start_time = time.time()
-
+    obs_init, _ = envs.reset(seed=args.seed)
+    
+    next_obs = torch.Tensor(obs_init).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
     num_updates = args.total_timesteps // args.batch_size
 
     print(f"Start running: {run_name}")
     for update in range(1, num_updates + 1):
         # Annealing the rate if instructed to do so.
-        obs_init = env.reset()[0]
-        next_obs = torch.Tensor(obs_init).to(device).reshape(-1, obs_init.shape[0])
         if args.anneal_lr:
             frac = 1.0 - (update - 1.0) / num_updates
             lrnow = frac * args.learning_rate
@@ -137,31 +118,22 @@ if __name__ == "__main__":
             actions[step] = action
             logprobs[step] = logprob
 
-            next_obs, reward, done, _, info = env.step(action.cpu().numpy()[0])
+            next_obs, reward, done, _, info = envs.step(action.cpu().numpy())
             rewards[step] = torch.tensor(reward).to(device).view(-1)
-            next_obs, next_done = torch.Tensor(np.array([next_obs])).to(
-                device
-            ), torch.Tensor(np.array([done])).to(device)
-
-            if done:
-                print(f"global_step={global_step}, episodic_return={sum(rewards)}")
-                writer.add_scalar("charts/episodic_return", sum(rewards), global_step)
-                writer.add_scalar("charts/episodic_length", step, global_step)
-                if args.track:
-                    wandb.log({"charts/episodic_return": sum(rewards)})
-                    wandb.log({"charts/episodic_length": step})
-                obs_init = env.reset()[0]
-                next_obs = torch.Tensor(obs_init).to(device).reshape(-1, obs_init.shape[0])
-
-        if not done:
-            print(f"global_step={global_step}, episodic_return={sum(rewards)}")
-            writer.add_scalar("charts/episodic_return", sum(rewards), global_step)
-            writer.add_scalar("charts/episodic_length", step, global_step)
-            if args.track:
-                wandb.log({"charts/episodic_return": sum(rewards)})
-                wandb.log({"charts/episodic_length": step})
-
-        print(f"|{update}|{num_updates + 1}|")
+            next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(
+                done
+            ).to(device)
+            for item in info:
+                if "final_info" in item:
+                    for idx, final_item in enumerate(info["_final_info"]):
+                        if final_item:
+                            print(f"global_step={global_step}, episodic_return={info['final_info'][idx]['episode']['r']}")
+                            writer.add_scalar("charts/episodic_return", info['final_info'][idx]['episode']['r'], global_step)
+                            writer.add_scalar("charts/episodic_length", info['final_info'][idx]['episode']['l'], global_step)
+                            if args.track:
+                                wandb.log({"charts/episodic_return": info['final_info'][idx]['episode']['r']})
+                                wandb.log({"charts/episodic_length": info['final_info'][idx]['episode']['l']})
+                    break
         # bootstrap value if not done
         with torch.no_grad():
             next_value = agent.get_value(next_obs).reshape(1, -1)
@@ -257,7 +229,7 @@ if __name__ == "__main__":
                     v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
 
                 entropy_loss = entropy.mean()
-                loss = pg_loss - v_loss * args.vf_coef + args.ent_coef * entropy_loss
+                loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
 
                 optimizer.zero_grad()
                 loss.backward()
