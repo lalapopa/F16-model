@@ -35,10 +35,10 @@ def test_F16():
     done = False
     start_time = time.time()
 
-    for i in range(0, n):
+    for _ in range(0, n):
         # action = get_action()
-        # action = np.array([np.radians(random.uniform(-10, 10)), 0.3])
-        action = u0
+        action = np.array([np.radians(random.uniform(-10, 10)), 0.3])
+        # action = u0
         state, reward, done, current_time, _ = env.step(action)  # give as numpy array
         if state.all():
             states.append(state)

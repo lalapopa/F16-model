@@ -8,45 +8,14 @@ from torch.utils.tensorboard import SummaryWriter
 
 from ppo_model import Agent
 from F16model.env import F16
-from utils import parse_args
+from utils import parse_args, state_logger, weight_histograms 
 
 ENV_CONFIG = {
     "dt": 0.01,
-    "tn": 20,
+    "tn": 10,
     "norm_state": True,
     "debug_state": False,
 }
-
-
-def weight_histograms_conv2d(writer, step, weights, layer_number):
-    weights_shape = weights.shape
-    num_kernels = weights_shape[0]
-    for k in range(num_kernels):
-        flattened_weights = weights[k].flatten()
-        tag = f"layer_{layer_number}/kernel_{k}"
-        writer.add_histogram(
-            tag, flattened_weights, global_step=step, bins="tensorflow"
-        )
-
-
-def weight_histograms_linear(writer, step, weights, layer_number):
-    flattened_weights = weights.flatten()
-    tag = f"layer_{layer_number}"
-    writer.add_histogram(tag, flattened_weights, global_step=step, bins="tensorflow")
-
-
-def weight_histograms(writer, step, model):
-    # Iterate over all model layers
-    for layer_number in range(len(model)):
-        # Get layer
-        layer = model[layer_number]
-        # Compute weight histograms for appropriate layer
-        if isinstance(layer, nn.Conv2d):
-            weights = layer.weight
-            weight_histograms_conv2d(writer, step, weights, layer_number)
-        elif isinstance(layer, nn.Linear):
-            weights = layer.weight
-            weight_histograms_linear(writer, step, weights, layer_number)
 
 
 if __name__ == "__main__":
@@ -86,8 +55,8 @@ if __name__ == "__main__":
 
     # env setup
     env = F16(ENV_CONFIG)
-    action_size = 2  # stab movement, throttle
-    obs_size = (env.reset()).shape[0]
+    action_size = env.action_size()  # stab movement, throttle
+    obs_size = env.state_size()
 
     agent = Agent(obs_size, action_size).to(device)
     weight_histograms(writer, 0, agent.actor_mean)
@@ -103,15 +72,15 @@ if __name__ == "__main__":
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
+    obs_init = env.reset()
 
+    next_obs = torch.Tensor(obs_init).to(device).reshape(-1, obs_init.shape[0])
     next_done = torch.zeros(args.num_envs).to(device)
     num_updates = args.total_timesteps // args.batch_size
     for update in range(1, num_updates + 1):
         # Annealing the rate if instructed to do so.
-        obs_init = env.reset()
-        with open("logs/" + run_name + ".txt", "w") as f:
-            f.write(str(list(env.init_state.to_array())) + "\n")
-        next_obs = torch.Tensor(obs_init).to(device).reshape(-1, obs_init.shape[0])
+        state_logger(run_name, init_state=env.init_state.to_array())
+
         if args.anneal_lr:
             frac = 1.0 - (update - 1.0) / num_updates
             lrnow = frac * args.learning_rate
@@ -130,17 +99,15 @@ if __name__ == "__main__":
             action = env.rescale_action(action)
             logprobs[step] = logprob
 
-            with open("logs/" + run_name + ".txt", "a") as f:
-                f.write(str(list(action)) + "\n")
+            state_logger(run_name, action=action)
             next_obs, reward, done, _, info = env.step(action)
-            # print(f"{global_step}|\n{next_obs}")
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = torch.Tensor(np.array([next_obs])).to(
                 device
             ), torch.Tensor(np.array([done])).to(device)
             if done:
                 print(
-                    f"global_step={global_step}, episodic_return={info['total_return']}!, episodic_length={info['episode_length']}"
+                    f"global_step={global_step}, episodic_return={info['total_return']}, episodic_length={info['episode_length']}"
                 )
                 writer.add_scalar(
                     "charts/episodic_return", info["total_return"], global_step
@@ -151,20 +118,6 @@ if __name__ == "__main__":
                 if args.track:
                     wandb.log({"charts/episodic_return": info["total_return"]})
                     wandb.log({"charts/episodic_length": info["episode_length"]})
-        if not done:
-            print(
-                f"global_step={global_step}, episodic_return={info['total_return']}!, episodic_length={info['episode_length']}"
-            )
-            writer.add_scalar(
-                "charts/episodic_return", info["total_return"], global_step
-            )
-            writer.add_scalar(
-                "charts/episodic_length", info["episode_length"], global_step
-            )
-            if args.track:
-                wandb.log({"charts/episodic_return": info["total_return"]})
-                wandb.log({"charts/episodic_length": info["episode_length"]})
-
         print(f"|{update}|{num_updates + 1}|")
         # bootstrap value if not done
         with torch.no_grad():
@@ -261,7 +214,7 @@ if __name__ == "__main__":
                     v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
 
                 entropy_loss = entropy.mean()
-                loss = pg_loss - v_loss * args.vf_coef + args.ent_coef * entropy_loss
+                loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
 
                 optimizer.zero_grad()
                 loss.backward()

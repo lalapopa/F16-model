@@ -17,10 +17,18 @@ maxthrottle = 1
 lef = 0
 sb = 0
 
-state_restrictions = {
-    "Oy": [2000, 6000],
+state_bound = {
+    "Oy": [0, 35000],
+    "wz": [np.radians(-150), np.radians(150)],
+    "theta": [np.radians(-90), np.radians(270)],
+    "V": [50, 600],
+    "alpha": [np.radians(-20), np.radians(45)],
+}
+
+random_state_bound = {
+    "Oy": [2000, 4000],
     "wz": [np.radians(-5), np.radians(5)],
-    "theta": [np.radians(-10), np.radians(10)],
-    "V": [90, 300],
+    "V": [90, 250],
     "alpha": [np.radians(-5), np.radians(5)],
+    "maxabsstab": [np.radians(-5), np.radians(5)],
 }

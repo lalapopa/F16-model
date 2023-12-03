@@ -8,14 +8,13 @@ import F16model.data.plane as plane
 
 class F16:
 
-    """RL like enviroment for F16model"""
+    """Gym like enviroment for F16model"""
 
     def __init__(self, config):
         self.dt = config["dt"]  # simulation step
         self.tn = config["tn"]  # finish time
-        self.clock = 0
-        self.done = False
-        if config["debug_state"]:  # init state should be in States
+        self.norm_state = config["norm_state"]
+        if config["debug_state"]:  # init_state should class States
             self.init_state = config["init_state"]
         else:
             try:
@@ -40,17 +39,18 @@ class F16:
         self.model = F16model(self.init_state, self.dt)
         self.ref_signal = ReferenceSignal(0, self.dt, self.tn)
 
+        self.clock = 0
         self.total_return = 0
         self.episode_length = 0
+        self.done = False
         self.prev_done = False
         self.prev_action = Control(0, 0)
-        self.norm_state = config["norm_state"]
 
     def step(self, action):
         if isinstance(action, np.ndarray):
             action = Control(action[0], action[1])
         else:
-            raise ValueError(f"Action has type '{type(action)}' should be np.array")
+            raise TypeError(f"Action has type '{type(action)}' should be np.array")
 
         if self.prev_done:
             self.prev_done = False
@@ -58,9 +58,9 @@ class F16:
 
         state = self.model.step(action)
         self.clock += self.dt
-        self.check_state(state)
+        reward = self.check_state(state) # If fly out of bound give -1000 reward
 
-        reward = self.compute_reward(state)
+        reward += self.compute_reward(state)
         out_state = self.state_transform(state)
         self.total_return += reward
 
@@ -83,7 +83,7 @@ class F16:
             ]
         )
         tracking_err = tracking_ref - np.array([state.theta, state.V])
-        tracking_Q = np.array([1 / 1, 1 / 100])
+        tracking_Q = np.array([1 / 10, 1 / 100])
 
         reward_vec = np.abs(
             np.clip(
@@ -109,11 +109,10 @@ class F16:
         """
         state_short = {
             k: vars(state)[k]
-            for k, _ in plane.state_restrictions.items()
+            for k, _ in plane.state_bound.items()
             if k in vars(state)
-        }  # take keys that defines in state_restrictions from `State` class
+        }  # take keys that defines in state_boundfrom `States` class
         state_short = list(state_short.values())
-
         if self.norm_state:
             state_short = F16.normalize(state_short)
 
@@ -124,26 +123,28 @@ class F16:
         return np.array(state_short)
 
     def check_state(self, state):
+        reward = 0
         if state.Oy <= 300:
-            self.total_return = -1000
+            reward += -1000
             self.done = True
 
         if state.Oy >= 30000:
-            self.total_return = -1000
+            reward += -1000
             self.done = True
 
         if self.episode_length == (self.tn / self.dt) - 1:
             self.done = True
+        return reward
 
     def normalize(truncated_state):
         norm_values = []
-        for i, values in enumerate(plane.state_restrictions.values()):
+        for i, values in enumerate(plane.state_bound.values()):
             norm_values.append(minmaxscaler(truncated_state[i], values[0], values[1]))
         return norm_values
 
     def denormalize(state_norm):
         norm_values = []
-        for i, values in enumerate(plane.state_restrictions.values()):
+        for i, values in enumerate(plane.state_bound.values()):
             norm_values.append(
                 minmaxscaler(
                     state_norm[i], values[0], values[1], inverse_transform=True
@@ -172,14 +173,21 @@ class F16:
         Rescale action [stab, throttle]
         """
         action = action.cpu().numpy()[0]
-        stab_rescale = rescale_value(
+        action = np.clip(action, -1, 1) 
+        stab_rescale = _rescale_value(
             action[0], np.array([-plane.maxabsstab, plane.maxabsstab])
         )
-        throttle_rescale = rescale_value(action[1], np.array([0, 1]))
+        throttle_rescale = _rescale_value(action[1], np.array([0, 1]))
         return np.array([stab_rescale, throttle_rescale])
 
+    def action_size(self):
+        return self.prev_action.to_array().size
 
-def rescale_value(value, min_max_range):
+    def state_size(self):
+        return self.state_transform(self.init_state).size
+
+
+def _rescale_value(value, min_max_range):
     """
     Rescale the action from [-1, 1] to [min_max_range[0], min_max_range[1]]
     """
@@ -199,26 +207,26 @@ def get_action():
 
 def get_random_state():
     alpha_angle_random = np.random.uniform(
-        plane.state_restrictions["alpha"][0], plane.state_restrictions["theta"][1], 1
+        plane.random_state_bound["alpha"][0], plane.random_state_bound["alpha"][1], 1
     )[0]
     return States(
         Ox=0,
         Oy=np.random.uniform(
-            plane.state_restrictions["Oy"][0] + 100,
-            plane.state_restrictions["Oy"][1] - 1000,
+            plane.random_state_bound["Oy"][0],
+            plane.random_state_bound["Oy"][1],
             1,
         )[0],
         wz=np.random.uniform(
-            plane.state_restrictions["wz"][0], plane.state_restrictions["wz"][1], 1
+            plane.random_state_bound["wz"][0], plane.random_state_bound["wz"][1], 1
         )[0],
         theta=alpha_angle_random,
         V=np.random.uniform(
-            plane.state_restrictions["V"][0], plane.state_restrictions["V"][1], 1
+            plane.random_state_bound["V"][0], plane.random_state_bound["V"][1], 1
         )[0],
         alpha=alpha_angle_random,
-        stab=np.random.uniform(-plane.maxabsstab, plane.maxabsstab, 1)[0],
-        dstab=np.random.uniform(-plane.maxabsdstab, plane.maxabsdstab, 1)[0],
-        Pa=find_correct_thrust_position(np.random.uniform(0.2, 1, 1)[0]),
+        stab=np.random.uniform(plane.random_state_bound["maxabsstab"][0], plane.random_state_bound["maxabsstab"][1], 1)[0],
+        dstab=0.0,
+        Pa=find_correct_thrust_position(np.random.uniform(0.3, 0.8, 1)[0]),
     )
 
 

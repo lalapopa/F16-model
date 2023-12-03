@@ -1,5 +1,6 @@
 import os
 import argparse
+import numpy as np
 import torch.nn as nn
 from distutils.util import strtobool
 
@@ -62,7 +63,6 @@ def parse_args():
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
-    # fmt: on
     return args
 
 
@@ -74,13 +74,13 @@ def weight_histograms(writer, step, model):
         # Compute weight histograms for appropriate layer
         if isinstance(layer, nn.Conv2d):
             weights = layer.weight
-            weight_histograms_conv2d(writer, step, weights, layer_number)
+            _weight_histograms_conv2d(writer, step, weights, layer_number)
         elif isinstance(layer, nn.Linear):
             weights = layer.weight
-            weight_histograms_linear(writer, step, weights, layer_number)
+            _weight_histograms_linear(writer, step, weights, layer_number)
 
 
-def weight_histograms_conv2d(writer, step, weights, layer_number):
+def _weight_histograms_conv2d(writer, step, weights, layer_number):
     weights_shape = weights.shape
     num_kernels = weights_shape[0]
     for k in range(num_kernels):
@@ -91,7 +91,16 @@ def weight_histograms_conv2d(writer, step, weights, layer_number):
         )
 
 
-def weight_histograms_linear(writer, step, weights, layer_number):
+def _weight_histograms_linear(writer, step, weights, layer_number):
     flattened_weights = weights.flatten()
     tag = f"layer_{layer_number}"
     writer.add_histogram(tag, flattened_weights, global_step=step, bins="tensorflow")
+
+
+def state_logger(run_name, action=None, init_state=None):
+    if isinstance(init_state, np.ndarray):
+        with open("logs/" + run_name + ".txt", "w") as f:
+            f.write(str(list(init_state)) + "\n")
+    if isinstance(action, np.ndarray):
+        with open("logs/" + run_name + ".txt", "a") as f:
+            f.write(str(list(action)) + "\n")
