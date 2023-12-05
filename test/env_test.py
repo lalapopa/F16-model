@@ -14,7 +14,7 @@ import F16model.utils.plots as utils_plots
 
 ENV_CONFIG = {
     "dt": 0.01,
-    "tn": 20,
+    "tn": 10,
     "norm_state": False,
     "debug_state": False,
 }
@@ -23,11 +23,11 @@ ENV_CONFIG = {
 def test_F16():
     ENV_CONFIG["norm_state"] = True
     x0, u0 = get_trimmed_state_control()
-    ENV_CONFIG["init_state"] = x0
-    ENV_CONFIG["init_control"] = u0
-    n = 1000 
+    # ENV_CONFIG["init_state"] = x0
+    # ENV_CONFIG["init_control"] = u0
+    n = 512 
     env = F16(ENV_CONFIG)
-#    env.reset()
+    #    env.reset()
     actions = []
     states = []
     rewards = []
@@ -48,10 +48,16 @@ def test_F16():
         if done:
             break
     print(f"TOTAL REWARD = {round(sum(rewards), 4)}, TOTAL TIME = {times[-1]}")
-#    print(f"|{states[0]}|{len(rewards) = }|{done = }|")
+    #    print(f"|{states[0]}|{len(rewards) = }|{done = }|")
     print("--- %s seconds ---" % (time.time() - start_time))
     denorm_states = list(map(F16.denormalize, states))
-    utils_plots.result(denorm_states, actions, times, plot_name="test_F16", ref_signal=env.ref_signal.theta_ref[:n])
+    utils_plots.result(
+        denorm_states,
+        actions,
+        times,
+        plot_name="test_F16",
+        ref_signal=env.ref_signal.theta_ref[:n],
+    )
     utils_plots.algo(rewards, times, plot_name="test_F16_algo")
 
 
@@ -66,7 +72,7 @@ def check_dispertion_reward():
         done = False
         for _ in range(0, 512):
             # action = np.array([0, 0])
-            action = np.array([np.radians(random.uniform(-10, 10)), 0.3])
+            action = np.array([np.radians(random.uniform(-25, 25)), 0.3])
             state, reward, done, current_time, _ = env.step(
                 action
             )  # give as numpy array
@@ -147,9 +153,7 @@ def test_failed_run():
         if done:
             break
 
-    print(
-        f"TOTAL REWARD = {round(sum(rewards), 4)}, TOTAL TIME = {times[-1]}"
-    )
+    print(f"TOTAL REWARD = {round(sum(rewards), 4)}, TOTAL TIME = {times[-1]}")
     print(f"|{states[0]}|{len(rewards) = }|{done = }|")
     utils_plots.result(
         states[: i - 10],
@@ -165,7 +169,7 @@ if __name__ == "__main__":
     # test_trim_state_value()
     # test_failed_run()
     test_F16()
-    # check_dispertion_reward()
+#    check_dispertion_reward()
 #    parallel_env_runner()
 #    with Profile() as profile:
 #        for i in range(0, 1):

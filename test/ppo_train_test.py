@@ -5,10 +5,12 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
-
-from control.ppo.ppo_model import Agent
 import gym
+
+from simple_env import DummestEnv
+from control.ppo.ppo_model import Agent
 from control.ppo.utils import parse_args, weight_histograms
+
 
 ENV_CONFIG = {
     "gym-id": "LunarLander-v2",
@@ -23,6 +25,17 @@ def make_env(gym_id, seed, idx, capture_video, run_name):
         if capture_video:
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+        env.action_space.seed(seed)
+        env.observation_space.seed(seed)
+        return env
+
+    return thunk
+
+
+def make_simple_env(seed):
+    def thunk():
+        env = DummestEnv()
+        env = gym.wrappers.RecordEpisodeStatistics(env)
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
@@ -63,21 +76,23 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
-    envs = gym.vector.SyncVectorEnv(
-        [
-            make_env(
-                ENV_CONFIG["gym-id"],
-                args.seed + i,
-                i,
-                ENV_CONFIG["capture-video"],
-                run_name,
-            )
-            for i in range(args.num_envs)
-        ]
-    )
+#    envs = gym.vector.SyncVectorEnv(
+#        [
+#            make_env(
+#                ENV_CONFIG["gym-id"],
+#                args.seed + i,
+#                i,
+#                ENV_CONFIG["capture-video"],
+#                run_name,
+#            )
+#            for i in range(args.num_envs)
+#        ]
+#    )
+    envs = gym.vector.SyncVectorEnv([make_simple_env(args.seed + i) for i in range(args.num_envs)])
 
     action_size = np.array(envs.single_action_space.shape).prod()
     obs_size = np.array(envs.single_observation_space.shape).prod()
+
     agent = Agent(obs_size, action_size).to(device)
     weight_histograms(writer, 0, agent.actor_mean)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)

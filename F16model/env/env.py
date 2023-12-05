@@ -58,13 +58,14 @@ class F16:
 
         state = self.model.step(action)
         self.clock += self.dt
-        reward = self.check_state(state) # If fly out of bound give -1000 reward
+        self.episode_length += 1
 
+        reward = self.check_state(state) # If fly out of bound give -1000 reward
         reward += self.compute_reward(state)
+
         out_state = self.state_transform(state)
         self.total_return += reward
 
-        self.episode_length += 1
         self.prev_action = action
 
         info = {
@@ -83,7 +84,7 @@ class F16:
             ]
         )
         tracking_err = tracking_ref - np.array([state.theta, state.V])
-        tracking_Q = np.array([1 / 10, 1 / 100])
+        tracking_Q = np.array([1 / np.radians(30), 1 / 240])
 
         reward_vec = np.abs(
             np.clip(
@@ -224,9 +225,9 @@ def get_random_state():
             plane.random_state_bound["V"][0], plane.random_state_bound["V"][1], 1
         )[0],
         alpha=alpha_angle_random,
-        stab=np.random.uniform(plane.random_state_bound["maxabsstab"][0], plane.random_state_bound["maxabsstab"][1], 1)[0],
+        stab=0,
         dstab=0.0,
-        Pa=find_correct_thrust_position(np.random.uniform(0.3, 0.8, 1)[0]),
+        Pa=find_correct_thrust_position(0),
     )
 
 
