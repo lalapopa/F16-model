@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
-import gym
+import gymnasium as gym
 
 from simple_env import DummestEnv
 from control.ppo.ppo_model import Agent
@@ -13,13 +13,12 @@ from control.ppo.utils import parse_args, weight_histograms
 
 
 ENV_CONFIG = {
-    "gym-id": "LunarLander-v2",
     "capture-video": False,
 }
 
 
 def make_env(gym_id, seed, idx, capture_video, run_name):
-    def thunk():
+    def wrap_env():
         env = gym.make(gym_id, continuous=True)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
@@ -29,23 +28,23 @@ def make_env(gym_id, seed, idx, capture_video, run_name):
         env.observation_space.seed(seed)
         return env
 
-    return thunk
-
-
-def make_simple_env(seed):
-    def thunk():
+    def wrap_simple_env():
         env = DummestEnv()
         env = gym.wrappers.RecordEpisodeStatistics(env)
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
 
-    return thunk
+    if gym_id == "LunarLander-v2":
+        wrap = wrap_env
+    else:
+        wrap = wrap_simple_env
+    return wrap
 
 
 if __name__ == "__main__":
     args = parse_args()
-    run_name = f"LunarLander_test__{args.exp_name}__{args.seed}__{str(int(time.time()))}_{('%032x' % random.getrandbits(128))[:4]}"
+    run_name = f"test__{args.gym_id}__{args.exp_name}__{args.seed}__{str(int(time.time()))}_{('%032x' % random.getrandbits(128))[:4]}"
     if args.track:
         import wandb
 
@@ -76,20 +75,18 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
-#    envs = gym.vector.SyncVectorEnv(
-#        [
-#            make_env(
-#                ENV_CONFIG["gym-id"],
-#                args.seed + i,
-#                i,
-#                ENV_CONFIG["capture-video"],
-#                run_name,
-#            )
-#            for i in range(args.num_envs)
-#        ]
-#    )
-    envs = gym.vector.SyncVectorEnv([make_simple_env(args.seed + i) for i in range(args.num_envs)])
-
+    envs = gym.vector.SyncVectorEnv(
+        [
+            make_env(
+                args.gym_id,
+                args.seed + i,
+                i,
+                ENV_CONFIG["capture-video"],
+                run_name,
+            )
+            for i in range(args.num_envs)
+        ]
+    )
     action_size = np.array(envs.single_action_space.shape).prod()
     obs_size = np.array(envs.single_observation_space.shape).prod()
 
@@ -108,7 +105,7 @@ if __name__ == "__main__":
     global_step = 0
     start_time = time.time()
     obs_init, _ = envs.reset(seed=args.seed)
-    
+
     next_obs = torch.Tensor(obs_init).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
     num_updates = args.total_timesteps // args.batch_size
@@ -142,12 +139,34 @@ if __name__ == "__main__":
                 if "final_info" in item:
                     for idx, final_item in enumerate(info["_final_info"]):
                         if final_item:
-                            print(f"global_step={global_step}, episodic_return={info['final_info'][idx]['episode']['r']}")
-                            writer.add_scalar("charts/episodic_return", info['final_info'][idx]['episode']['r'], global_step)
-                            writer.add_scalar("charts/episodic_length", info['final_info'][idx]['episode']['l'], global_step)
+                            print(
+                                f"global_step={global_step}, episodic_return={info['final_info'][idx]['episode']['r']}"
+                            )
+                            writer.add_scalar(
+                                "charts/episodic_return",
+                                info["final_info"][idx]["episode"]["r"],
+                                global_step,
+                            )
+                            writer.add_scalar(
+                                "charts/episodic_length",
+                                info["final_info"][idx]["episode"]["l"],
+                                global_step,
+                            )
                             if args.track:
-                                wandb.log({"charts/episodic_return": info['final_info'][idx]['episode']['r']})
-                                wandb.log({"charts/episodic_length": info['final_info'][idx]['episode']['l']})
+                                wandb.log(
+                                    {
+                                        "charts/episodic_return": info["final_info"][
+                                            idx
+                                        ]["episode"]["r"]
+                                    }
+                                )
+                                wandb.log(
+                                    {
+                                        "charts/episodic_length": info["final_info"][
+                                            idx
+                                        ]["episode"]["l"]
+                                    }
+                                )
                     break
         # bootstrap value if not done
         with torch.no_grad():

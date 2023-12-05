@@ -9,25 +9,27 @@ from F16model.model import States
 from F16model.env import F16, get_trimmed_state_control
 from F16model.data import plane
 import F16model.utils.plots as utils_plots
+from F16model.env.env_gym import GymF16, normalize_value
 
-# random.seed(322)
+SEED = 322
 
 ENV_CONFIG = {
     "dt": 0.01,
     "tn": 10,
     "norm_state": False,
     "debug_state": False,
+    "determenistic_ref": True,
 }
 
 
 def test_F16():
     ENV_CONFIG["norm_state"] = True
     x0, u0 = get_trimmed_state_control()
-    # ENV_CONFIG["init_state"] = x0
-    # ENV_CONFIG["init_control"] = u0
-    n = 512 
+    ENV_CONFIG["init_state"] = x0
+    ENV_CONFIG["init_control"] = u0
+    n = 512
     env = F16(ENV_CONFIG)
-    #    env.reset()
+    # env.reset(SEED)
     actions = []
     states = []
     rewards = []
@@ -37,8 +39,8 @@ def test_F16():
 
     for _ in range(0, n):
         # action = get_action()
-        action = np.array([np.radians(random.uniform(-10, 10)), 0.3])
-        # action = u0
+        # action = np.array([np.radians(random.uniform(-10, 10)), 0.3])
+        action = u0
         state, reward, done, current_time, _ = env.step(action)  # give as numpy array
         if state.all():
             states.append(state)
@@ -164,11 +166,54 @@ def test_failed_run():
     utils_plots.algo(rewards, times, plot_name=f"fail_test_{file_name[-8:-4]}_reward")
 
 
+def test_gym_F16():
+    x0, u0 = get_trimmed_state_control()
+    ENV_CONFIG["init_state"] = x0
+    ENV_CONFIG["init_control"] = u0
+    n = 512
+    env = GymF16(ENV_CONFIG)
+    #    env.reset(SEED)
+    actions = []
+    states = []
+    rewards = []
+    times = []
+    done = False
+    start_time = time.time()
+
+    for _ in range(0, n):
+        # action = get_action()
+        # action = np.array([np.radians(random.uniform(-10, 10)), 0.3])
+        stab_norm = normalize_value(u0[0], np.radians(-25), np.radians(25))
+        throttle_norm = normalize_value(u0[1], 0, 1) 
+        action = np.array([stab_norm, throttle_norm])
+        state, reward, done, _, info = env.step(action)  # give as numpy array
+        if state.all():
+            states.append(state)
+            rewards.append(reward)
+            actions.append(action)
+            times.append(info["clock"])
+        if done:
+            break
+    print(f"TOTAL REWARD = {round(sum(rewards), 4)}, TOTAL TIME = {times[-1]}")
+    #    print(f"|{states[0]}|{len(rewards) = }|{done = }|")
+    print("--- %s seconds ---" % (time.time() - start_time))
+    denorm_states = list(map(F16.denormalize, states))
+    utils_plots.result(
+        denorm_states,
+        actions,
+        times,
+        plot_name="test_F16_gym",
+        ref_signal=env.ref_signal.theta_ref[:n],
+    )
+    utils_plots.algo(rewards, times, plot_name="test_F16_gym_algo")
+
+
 if __name__ == "__main__":
     # test_run_episode()
     # test_trim_state_value()
     # test_failed_run()
     test_F16()
+    test_gym_F16()
 #    check_dispertion_reward()
 #    parallel_env_runner()
 #    with Profile() as profile:

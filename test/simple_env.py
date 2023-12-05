@@ -1,6 +1,6 @@
 import numpy as np
 import random
-import gym
+import gymnasium as gym
 
 
 class DummestEnv(gym.Env):
@@ -34,7 +34,7 @@ class DummestEnv(gym.Env):
     def render(self):
         return self.history
 
-    def reset(self, seed=None):
+    def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self.history = []
         self.clock = 0

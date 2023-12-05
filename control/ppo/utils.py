@@ -10,7 +10,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
         help="the name of this experiment")
-    parser.add_argument("--gym-id", type=str, default="Custom-F16-model",
+    parser.add_argument("--gym-id", type=str, default="LunarLander-v2",
         help="the id of the gym environment")
     parser.add_argument("--learning-rate", type=float, default=0.0001,
         help="the learning rate of the optimizer")
@@ -60,6 +60,8 @@ def parse_args():
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
+    parser.add_argument("--note", type=str, default=None,
+        help="additional info about run")
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
