@@ -19,12 +19,14 @@ ENV_CONFIG = {
     "determenistic_ref": False,
 }
 
+
 def make_env(seed):
     def wrap_env():
         env = GymF16(ENV_CONFIG)
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
+
     return wrap_env
 
 
@@ -65,12 +67,12 @@ if __name__ == "__main__":
 
     # env setup
     envs = gym.vector.SyncVectorEnv(
-    [
-        make_env(
-            args.seed + i,
-        )
-        for i in range(args.num_envs)
-    ]
+        [
+            make_env(
+                args.seed + i,
+            )
+            for i in range(args.num_envs)
+        ]
     )
 
     action_size = np.array(envs.single_action_space.shape).prod()
@@ -97,7 +99,7 @@ if __name__ == "__main__":
     num_updates = args.total_timesteps // args.batch_size
     for update in range(1, num_updates + 1):
         # Annealing the rate if instructed to do so.
-        state_logger(run_name, init_state=envs.call('init_state')[0].to_array())
+        state_logger(run_name, init_state=envs.call("init_state")[0].to_array())
 
         if args.anneal_lr:
             frac = 1.0 - (update - 1.0) / num_updates
@@ -119,19 +121,10 @@ if __name__ == "__main__":
             state_logger(run_name, action=action.cpu().numpy()[0])
             next_obs, reward, done, _, info = envs.step(action.cpu().numpy())
             rewards[step] = torch.tensor(reward).to(device).view(-1)
-            next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
-            for item in info:
-                if "final_info" in item:
-                    for idx, final_item in enumerate(info["_final_info"]):
-                        if final_item:
-                            print(f"global_step={global_step}, episodic_return={info['final_info'][idx]['total_return']}")
-                            writer.add_scalar("charts/episodic_return", info['final_info'][idx]['total_return'], global_step)
-                            writer.add_scalar("charts/episodic_length", info['final_info'][idx]['episode_length'], global_step)
-                            if args.track:
-                                wandb.log({"charts/episodic_return": info['final_info'][idx]['total_return']})
-                                wandb.log({"charts/episodic_length": info['final_info'][idx]['episode_length']})
-                    break
-
+            next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(
+                done
+            ).to(device)
+            write_to_tensorboard(writer, info)
         print(f"|{update}|{num_updates + 1}|")
         # bootstrap value if not done
         with torch.no_grad():

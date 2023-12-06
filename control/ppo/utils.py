@@ -106,3 +106,39 @@ def state_logger(run_name, action=None, init_state=None):
     if isinstance(action, np.ndarray):
         with open("logs/" + run_name + ".txt", "a") as f:
             f.write(str(list(action)) + "\n")
+
+
+def write_to_tensorboard(writer, info):
+    for item in info:
+        if "final_info" in item:
+            step_taken = 0
+            log_steps = []
+            log_rewards = []
+            log_length = []
+            for idx, final_item in enumerate(info["_final_info"]):
+                if final_item:
+                    ep_return = info["final_info"][idx]["total_return"]
+                    ep_length = info["final_info"][idx]["episode_length"]
+                    log_steps.append(global_step - step_taken)
+                    log_rewards.append(ep_return)
+                    log_length.append(ep_length)
+                    step_taken += ep_length
+
+            for i_step, i_reward, i_length in zip(
+                log_steps[::-1], log_rewards[::-1], log_length[::-1]
+            ):
+                print(f"global_step={i_step}, episodic_return={i_reward}")
+                writer.add_scalar(
+                    "charts/episodic_return",
+                    i_reward,
+                    i_step,
+                )
+                writer.add_scalar(
+                    "charts/episodic_length",
+                    i_length,
+                    i_step,
+                )
+                if args.track:
+                    wandb.log({"charts/episodic_return": i_reward})
+                    wandb.log({"charts/episodic_length": i_length})
+            break
