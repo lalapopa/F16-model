@@ -170,7 +170,7 @@ def test_gym_F16():
     x0, u0 = get_trimmed_state_control()
     ENV_CONFIG["init_state"] = x0
     ENV_CONFIG["init_control"] = u0
-    n = 512
+    n = 2048
     env = GymF16(ENV_CONFIG)
     #    env.reset(SEED)
     actions = []
@@ -182,9 +182,10 @@ def test_gym_F16():
 
     for _ in range(0, n):
         # action = get_action()
-        # action = np.array([np.radians(random.uniform(-10, 10)), 0.3])
+        # u0 = np.array([np.radians(random.uniform(-10, 10)), 0.3])
+
         stab_norm = normalize_value(u0[0], np.radians(-25), np.radians(25))
-        throttle_norm = normalize_value(u0[1], 0, 1) 
+        throttle_norm = normalize_value(u0[1], 0, 1)
         action = np.array([stab_norm, throttle_norm])
         state, reward, done, _, info = env.step(action)  # give as numpy array
         if state.all():
@@ -198,12 +199,13 @@ def test_gym_F16():
     #    print(f"|{states[0]}|{len(rewards) = }|{done = }|")
     print("--- %s seconds ---" % (time.time() - start_time))
     denorm_states = list(map(F16.denormalize, states))
+    print(len(times), len(env.ref_signal.theta_ref[:-1]))
     utils_plots.result(
         denorm_states,
         actions,
         times,
         plot_name="test_F16_gym",
-        ref_signal=env.ref_signal.theta_ref[:n],
+        ref_signal=env.ref_signal.theta_ref[:-1],
     )
     utils_plots.algo(rewards, times, plot_name="test_F16_gym_algo")
 
@@ -212,7 +214,7 @@ if __name__ == "__main__":
     # test_run_episode()
     # test_trim_state_value()
     # test_failed_run()
-    test_F16()
+    # test_F16()
     test_gym_F16()
 #    check_dispertion_reward()
 #    parallel_env_runner()

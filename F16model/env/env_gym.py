@@ -49,7 +49,6 @@ class GymF16(gym.Env):
         self.action_space = gym.spaces.Box(-1, 1, (2,), dtype=np.float32)
         low = -np.ones(self._state_size())
         high = -low
-
         self.observation_space = gym.spaces.Box(low, high)
 
     def _destroy(self):

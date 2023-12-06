@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from ppo_model import Agent
 from F16model.env.env_gym import GymF16
-from utils import parse_args, state_logger, weight_histograms
+from utils import parse_args, state_logger, weight_histograms, write_to_tensorboard
 
 ENV_CONFIG = {
     "dt": 0.01,

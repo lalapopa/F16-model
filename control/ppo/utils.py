@@ -142,3 +142,16 @@ def write_to_tensorboard(writer, info):
                     wandb.log({"charts/episodic_return": i_reward})
                     wandb.log({"charts/episodic_length": i_length})
             break
+
+
+def write_python_file(filename, save_name):
+    with open(filename) as f:
+        data = f.read()
+        f.close()
+
+    if not os.path.exists(save_name):
+        os.makedirs(os.path.dirname(save_name))
+
+    with open(save_name, mode="w") as f:
+        f.write(data)
+        f.close()
