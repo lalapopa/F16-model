@@ -1,23 +1,24 @@
-import os
-import numpy as np
 import random
+import numpy as np
+import gymnasium as gym
 
 from F16model.model import States, Control, F16model
+from F16model.utils.calc import normalize_value, minmaxscaler
 from F16model.env.task import ReferenceSignal
 from F16model.model.engine import find_correct_thrust_position
-from F16model.data import plane
-from F16model.utils.calc import normalize_value, minmaxscaler
+import F16model.data.plane as plane
 
 
-class F16:
+class F16(gym.Env):
 
-    """Gym like enviroment for F16model"""
+    """
+    Gym like enviroment for custom F16model.
+    """
 
     def __init__(self, config):
-        self.dt = config["dt"]  # simulation step
-        self.tn = config["tn"]  # finish time
-        self.norm_state = config["norm_state"]
-        if config["debug_state"]:  # init_state should class States
+        self.dt = float(config["dt"])
+        self.tn = float(config["tn"])
+        if config["debug_state"]:
             self.init_state = config["init_state"]
         else:
             try:
@@ -42,45 +43,46 @@ class F16:
         self.model = F16model(self.init_state, self.dt)
         self.config = config
         self.ref_signal = ReferenceSignal(
-            0, self.dt, self.tn, self.config["determenistic_ref"]
+            0, self.dt, self.tn, config["determenistic_ref"]
         )
+        self._destroy()
+        self.action_space = gym.spaces.Box(-1, 1, (2,), dtype=np.float32)
+        low = -np.ones(self._state_size())
+        high = -low
+        self.observation_space = gym.spaces.Box(low, high)
 
+    def _destroy(self):
         self.clock = 0
         self.total_return = 0
         self.episode_length = 0
         self.done = False
-        self.prev_done = False
         self.prev_action = Control(0, 0)
 
     def step(self, action):
         if isinstance(action, np.ndarray):
+            action = F16.rescale_action(action)
             action = Control(action[0], action[1])
         else:
             raise TypeError(f"Action has type '{type(action)}' should be np.array")
 
-        if self.prev_done:
-            self.prev_done = False
-            _ = self.reset()
-
         state = self.model.step(action)
         self.clock += self.dt
-        self.episode_length += 1
 
         reward = self.check_state(state)  # If fly out of bound give -1000 reward
         reward += self.compute_reward(state)
 
         out_state = self.state_transform(state)
         self.total_return += reward
+        self.episode_length += 1
 
         self.prev_action = action
 
         info = {
             "episode_length": self.episode_length,
             "total_return": self.total_return,
+            "clock": self.clock,
         }
-        if self.done:
-            self.prev_done = True
-        return out_state, reward, self.done, self.clock, info
+        return out_state, reward, self.done, False, info
 
     def compute_reward(self, state):
         tracking_ref = np.array(
@@ -90,7 +92,7 @@ class F16:
             ]
         )
         tracking_err = tracking_ref - np.array([state.theta, state.V])
-        tracking_Q = np.array([1 / np.radians(30), 1 / 240])
+        tracking_Q = np.array([1 / np.radians(10), 1 / 200])
 
         reward_vec = np.abs(
             np.clip(
@@ -99,7 +101,7 @@ class F16:
                 np.ones(tracking_err.shape),
             )
         )
-        reward = -1 / 3 * reward_vec.sum()
+        reward = -1 / 2 * reward_vec.sum()
 
         return reward
 
@@ -118,8 +120,7 @@ class F16:
             k: vars(state)[k] for k, _ in plane.state_bound.items() if k in vars(state)
         }  # take keys that defines in state_boundfrom `States` class
         state_short = list(state_short.values())
-        if self.norm_state:
-            state_short = F16.normalize(state_short)
+        state_short = F16.normalize(state_short)  # Always output normalized states
 
         theta_err = state.theta - self.ref_signal.theta_ref[self.episode_length]
         v_err = float(state.V - self.init_state.V)
@@ -161,44 +162,42 @@ class F16:
             norm_values = np.concatenate((norm_values, additional_states))
         return norm_values
 
-    def reset(self, seed=None):
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
         if seed:
-            np.random.seed(seed)
             random.seed(seed)
+            np.random.seed(seed)
         self.init_state = get_random_state()
         self.model = F16model(self.init_state, self.dt)
         self.ref_signal = ReferenceSignal(
-            0,
-            self.dt,
-            self.tn,
-            self.config["determenistic_ref"],
+            0, self.dt, self.tn, self.config["determenistic_ref"]
         )
-        self.init_state = self.model.reset()
-        self.episode_length = 0
-        self.total_return = 0
-        self.clock = 0
-        self.done = False
+        self.init_state = self.model.reset()  # This line useless I guess
+        self._destroy()
         out_state = self.state_transform(self.init_state)
-        return out_state
+        return out_state, {}
 
-    def rescale_action(self, action):
+    def render(self):
+        raise UserWarning("TODO: Implement this function")
+
+    def rescale_action(action):
         """
         Rescale action [stab, throttle]
         """
-        action = action.cpu().numpy()[0]
         action = np.clip(action, -1, 1)
         stab_rescale = normalize_value(
             action[0],
             -plane.maxabsstab,
             plane.maxabsstab,
+            inverse_transform=True,
         )
-        throttle_rescale = normalize_value(action[1], 0, 1)
+        throttle_rescale = normalize_value(action[1], 0, 1, inverse_transform=True)
         return np.array([stab_rescale, throttle_rescale])
 
-    def action_size(self):
+    def _action_size(self):
         return self.prev_action.to_array().size
 
-    def state_size(self):
+    def _state_size(self):
         return self.state_transform(self.init_state).size
 
 

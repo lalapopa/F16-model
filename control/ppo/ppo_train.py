@@ -8,7 +8,7 @@ import gymnasium as gym
 from torch.utils.tensorboard import SummaryWriter
 
 from ppo_model import Agent
-from F16model.env.env_gym import GymF16
+from F16model.env import F16 
 from utils import parse_args, state_logger, weight_histograms, write_to_tensorboard
 
 ENV_CONFIG = {
@@ -22,7 +22,7 @@ ENV_CONFIG = {
 
 def make_env(seed):
     def wrap_env():
-        env = GymF16(ENV_CONFIG)
+        env = F16(ENV_CONFIG)
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env

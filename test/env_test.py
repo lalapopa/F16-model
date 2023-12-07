@@ -2,17 +2,14 @@ import numpy as np
 import random
 import ast
 import time
-from cProfile import Profile
-from pstats import SortKey, Stats
 
 from F16model.model import States
 from F16model.env import F16, get_trimmed_state_control
 from F16model.data import plane
+from F16model.utils.calc import normalize_value
 import F16model.utils.plots as utils_plots
-from F16model.env.env_gym import GymF16, normalize_value
 
 SEED = 322
-
 ENV_CONFIG = {
     "dt": 0.01,
     "tn": 10,
@@ -23,13 +20,12 @@ ENV_CONFIG = {
 
 
 def test_F16():
-    ENV_CONFIG["norm_state"] = True
     x0, u0 = get_trimmed_state_control()
     ENV_CONFIG["init_state"] = x0
     ENV_CONFIG["init_control"] = u0
-    n = 512
+    n = 2048
     env = F16(ENV_CONFIG)
-    # env.reset(SEED)
+    #    env.reset(SEED)
     actions = []
     states = []
     rewards = []
@@ -39,90 +35,32 @@ def test_F16():
 
     for _ in range(0, n):
         # action = get_action()
-        # action = np.array([np.radians(random.uniform(-10, 10)), 0.3])
-        action = u0
-        state, reward, done, current_time, _ = env.step(action)  # give as numpy array
+        u0 = np.array(
+            [np.radians(random.uniform(-10, 10)), np.radians(random.uniform(0, 1))]
+        )
+        stab_norm = normalize_value(u0[0], np.radians(-25), np.radians(25))
+        throttle_norm = normalize_value(u0[1], 0, 1)
+        action = np.array([stab_norm, throttle_norm])
+        state, reward, done, _, info = env.step(action)  # give as numpy array
         if state.all():
             states.append(state)
             rewards.append(reward)
             actions.append(action)
-            times.append(current_time)
+            times.append(info["clock"])
         if done:
             break
     print(f"TOTAL REWARD = {round(sum(rewards), 4)}, TOTAL TIME = {times[-1]}")
-    #    print(f"|{states[0]}|{len(rewards) = }|{done = }|")
     print("--- %s seconds ---" % (time.time() - start_time))
     denorm_states = list(map(F16.denormalize, states))
+    print(len(times), len(env.ref_signal.theta_ref))
     utils_plots.result(
         denorm_states,
         actions,
         times,
-        plot_name="test_F16",
-        ref_signal=env.ref_signal.theta_ref[:n],
+        plot_name="test_F16_gym",
+        ref_signal=env.ref_signal.theta_ref,
     )
-    utils_plots.algo(rewards, times, plot_name="test_F16_algo")
-
-
-def check_dispertion_reward():
-    ep_rewards = []
-    for i in range(100):
-        env = F16(ENV_CONFIG)
-        actions = []
-        states = []
-        rewards = []
-        times = []
-        done = False
-        for _ in range(0, 512):
-            # action = np.array([0, 0])
-            action = np.array([np.radians(random.uniform(-25, 25)), 0.3])
-            state, reward, done, current_time, _ = env.step(
-                action
-            )  # give as numpy array
-            if state.all():
-                states.append(state)
-                rewards.append(reward)
-                actions.append(action)
-                times.append(current_time)
-            if done:
-                break
-        ep_rewards.append(sum(rewards))
-        print(min(ep_rewards), max(ep_rewards), np.mean(ep_rewards))
-
-
-def test_trim_state_value():
-    u0 = [np.radians(-4.3166), 0.5449]
-    x0 = [
-        0,
-        6000,
-        0,
-        np.radians(2.4839),
-        250,
-        np.radians(2.4839),
-    ]
-    #    env = F16(x0, u0, norm_state=True)
-    env = F16(norm_state=True)
-    actions = []
-    states = []
-    rewards = []
-    times = []
-    done = False
-    while not done:
-        action = np.random.rand(2)
-        #        action = np.array(u0)
-        # action = np.array([0, 1])
-        state, reward, done, current_time, _ = env.step(action)  # give as numpy array
-        if state.all():
-            states.append(state)
-            rewards.append(reward)
-            actions.append(action)
-            times.append(current_time)
-        if done:
-            break
-    print(f"TOTAL REWARD = {round(sum(rewards), 4)}, TOTAL TIME = {times[-1]}")
-    print(f"|{states[0]}|{len(rewards) = }|{done = }|")
-    denorm_states = list(map(F16.denormalize, states))
-    utils_plots.result(denorm_states, actions, times, plot_name="test_F16_trim_value")
-    utils_plots.algo(rewards, times, plot_name="test_F16_trim_value_algo")
+    utils_plots.algo(rewards, times, plot_name="test_F16_gym_algo")
 
 
 def test_failed_run():
@@ -166,56 +104,8 @@ def test_failed_run():
     utils_plots.algo(rewards, times, plot_name=f"fail_test_{file_name[-8:-4]}_reward")
 
 
-def test_gym_F16():
-    x0, u0 = get_trimmed_state_control()
-    ENV_CONFIG["init_state"] = x0
-    ENV_CONFIG["init_control"] = u0
-    n = 2048
-    env = GymF16(ENV_CONFIG)
-    #    env.reset(SEED)
-    actions = []
-    states = []
-    rewards = []
-    times = []
-    done = False
-    start_time = time.time()
-
-    for _ in range(0, n):
-        # action = get_action()
-        u0 = np.array([np.radians(random.uniform(-10, 10)), np.radians(random.uniform(0, 1))])
-
-        stab_norm = normalize_value(u0[0], np.radians(-25), np.radians(25))
-        throttle_norm = normalize_value(u0[1], 0, 1)
-        action = np.array([stab_norm, throttle_norm])
-        state, reward, done, _, info = env.step(action)  # give as numpy array
-        if state.all():
-            states.append(state)
-            rewards.append(reward)
-            actions.append(action)
-            times.append(info["clock"])
-        if done:
-            break
-    print(f"TOTAL REWARD = {round(sum(rewards), 4)}, TOTAL TIME = {times[-1]}")
-    #    print(f"|{states[0]}|{len(rewards) = }|{done = }|")
-    print("--- %s seconds ---" % (time.time() - start_time))
-    denorm_states = list(map(F16.denormalize, states))
-    print(len(times), len(env.ref_signal.theta_ref))
-    utils_plots.result(
-        denorm_states,
-        actions,
-        times,
-        plot_name="test_F16_gym",
-        ref_signal=env.ref_signal.theta_ref,
-    )
-    utils_plots.algo(rewards, times, plot_name="test_F16_gym_algo")
-
-
 if __name__ == "__main__":
-    # test_run_episode()
-    # test_trim_state_value()
-    # test_failed_run()
-    # test_F16()
-    test_gym_F16()
+    test_F16()
 #    check_dispertion_reward()
 #    parallel_env_runner()
 #    with Profile() as profile:

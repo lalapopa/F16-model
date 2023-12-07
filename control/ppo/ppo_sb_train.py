@@ -5,7 +5,7 @@ from stable_baselines3 import SAC
 from stable_baselines3.common.env_util import make_vec_env
 
 from utils import parse_args, write_python_file
-from F16model.env.env_gym import GymF16
+from F16model.env import F16
 
 ENV_CONFIG = {
     "dt": 0.01,
@@ -17,7 +17,7 @@ ENV_CONFIG = {
 
 
 def env_wrapper():
-    env = GymF16(ENV_CONFIG)
+    env = F16(ENV_CONFIG)
     return env
 
 
