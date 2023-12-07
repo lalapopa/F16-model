@@ -1,11 +1,10 @@
 import os
 import random
 import time
-import gymnasium as gym
-from stable_baselines3 import PPO
+from stable_baselines3 import SAC
 from stable_baselines3.common.env_util import make_vec_env
 
-from utils import parse_args, state_logger, weight_histograms, write_python_file
+from utils import parse_args, write_python_file
 from F16model.env.env_gym import GymF16
 
 ENV_CONFIG = {
@@ -31,16 +30,16 @@ write_python_file(
 )
 
 vec_env = make_vec_env(env_wrapper, n_envs=4)
-model = PPO(
+model = SAC(
     "MlpPolicy",
     vec_env,
     verbose=1,
     tensorboard_log=f"runs/{run_name}",
-    seed=4,
-    use_sde=True,
+    seed=3,
+    #    use_sde=True,
 )
-model.learn(total_timesteps=5000000)
-model.save(f"runs/model/{run_name}")
+model.learn(total_timesteps=15000000)
+model.save(f"runs/models/{run_name}")
 
 # del model  # remove to demonstrate saving and loading
 

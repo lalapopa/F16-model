@@ -67,13 +67,13 @@ class GymF16(gym.Env):
 
         state = self.model.step(action)
         self.clock += self.dt
-        self.episode_length += 1
 
         reward = self.check_state(state)  # If fly out of bound give -1000 reward
         reward += self.compute_reward(state)
 
         out_state = self.state_transform(state)
         self.total_return += reward
+        self.episode_length += 1
 
         self.prev_action = action
 
@@ -92,7 +92,7 @@ class GymF16(gym.Env):
             ]
         )
         tracking_err = tracking_ref - np.array([state.theta, state.V])
-        tracking_Q = np.array([1 / np.radians(30), 1 / 240])
+        tracking_Q = np.array([1 / np.radians(10), 1 / 200])
 
         reward_vec = np.abs(
             np.clip(
@@ -101,7 +101,7 @@ class GymF16(gym.Env):
                 np.ones(tracking_err.shape),
             )
         )
-        reward = -1 / 3 * reward_vec.sum()
+        reward = -1 / 2 * reward_vec.sum()
 
         return reward
 

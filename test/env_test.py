@@ -182,7 +182,7 @@ def test_gym_F16():
 
     for _ in range(0, n):
         # action = get_action()
-        # u0 = np.array([np.radians(random.uniform(-10, 10)), 0.3])
+        u0 = np.array([np.radians(random.uniform(-10, 10)), np.radians(random.uniform(0, 1))])
 
         stab_norm = normalize_value(u0[0], np.radians(-25), np.radians(25))
         throttle_norm = normalize_value(u0[1], 0, 1)
@@ -199,13 +199,13 @@ def test_gym_F16():
     #    print(f"|{states[0]}|{len(rewards) = }|{done = }|")
     print("--- %s seconds ---" % (time.time() - start_time))
     denorm_states = list(map(F16.denormalize, states))
-    print(len(times), len(env.ref_signal.theta_ref[:-1]))
+    print(len(times), len(env.ref_signal.theta_ref))
     utils_plots.result(
         denorm_states,
         actions,
         times,
         plot_name="test_F16_gym",
-        ref_signal=env.ref_signal.theta_ref[:-1],
+        ref_signal=env.ref_signal.theta_ref,
     )
     utils_plots.algo(rewards, times, plot_name="test_F16_gym_algo")
 
