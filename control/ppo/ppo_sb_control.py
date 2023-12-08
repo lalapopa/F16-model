@@ -7,7 +7,7 @@ from F16model.env import F16, get_trimmed_state_control
 import F16model.utils.plots as utils_plots
 
 CONST_STEP = True
-model_name = "runs/models/F16__utils__sb__1__1701886759_6d10.zip"
+model_name = "runs/models/F16__utils__sb__1__1701981653_0b70.zip"
 ENV_CONFIG = {
     "dt": 0.01,
     "tn": 10,
@@ -54,7 +54,7 @@ def run_sim(x0, u0, max_episode=2000):
     states = list(map(F16.denormalize, states))
     actions = list(map(F16.rescale_action, actions))
     ref_signal = vec_env.get_attr("ref_signal")
-    return states, actions, ref_signal[0].theta_ref[:-1], sum(rewards), clock
+    return states, actions, ref_signal[0].theta_ref, sum(rewards), clock
 
 
 if __name__ == "__main__":

@@ -46,7 +46,7 @@ class F16(gym.Env):
             0, self.dt, self.tn, config["determenistic_ref"]
         )
         self._destroy()
-        self.action_space = gym.spaces.Box(-1, 1, (2,), dtype=np.float32)
+        self.action_space = gym.spaces.Box(-1, 1, (1,), dtype=np.float32)
         low = -np.ones(self._state_size())
         high = -low
         self.observation_space = gym.spaces.Box(low, high)
@@ -61,7 +61,7 @@ class F16(gym.Env):
     def step(self, action):
         if isinstance(action, np.ndarray):
             action = F16.rescale_action(action)
-            action = Control(action[0], action[1])
+            action = Control(action, 0)
         else:
             raise TypeError(f"Action has type '{type(action)}' should be np.array")
 
@@ -88,11 +88,10 @@ class F16(gym.Env):
         tracking_ref = np.array(
             [
                 self.ref_signal.theta_ref[self.episode_length],
-                self.init_state.V,
             ]
         )
-        tracking_err = tracking_ref - np.array([state.theta, state.V])
-        tracking_Q = np.array([1 / np.radians(10), 1 / 200])
+        tracking_err = tracking_ref - np.array([state.theta])
+        tracking_Q = np.array([1 / np.radians(10)])
 
         reward_vec = np.abs(
             np.clip(
@@ -101,7 +100,7 @@ class F16(gym.Env):
                 np.ones(tracking_err.shape),
             )
         )
-        reward = -1 / 2 * reward_vec.sum()
+        reward = -1 / 3 * reward_vec.sum()
 
         return reward
 
@@ -111,10 +110,8 @@ class F16(gym.Env):
         Oy
         wz
         theta
-        V
         alpha
         theta - theta_ref
-        V - V_ref
         """
         state_short = {
             k: vars(state)[k] for k, _ in plane.state_bound.items() if k in vars(state)
@@ -123,9 +120,7 @@ class F16(gym.Env):
         state_short = F16.normalize(state_short)  # Always output normalized states
 
         theta_err = state.theta - self.ref_signal.theta_ref[self.episode_length]
-        v_err = float(state.V - self.init_state.V)
         state_short.append(theta_err)
-        state_short.append(v_err)
         return np.array(state_short)
 
     def check_state(self, state):
@@ -182,7 +177,7 @@ class F16(gym.Env):
 
     def rescale_action(action):
         """
-        Rescale action [stab, throttle]
+        Rescale action [stab]
         """
         action = np.clip(action, -1, 1)
         stab_rescale = normalize_value(
@@ -191,8 +186,7 @@ class F16(gym.Env):
             plane.maxabsstab,
             inverse_transform=True,
         )
-        throttle_rescale = normalize_value(action[1], 0, 1, inverse_transform=True)
-        return np.array([stab_rescale, throttle_rescale])
+        return stab_rescale
 
     def _action_size(self):
         return self.prev_action.to_array().size

@@ -39,8 +39,7 @@ def test_F16():
             [np.radians(random.uniform(-10, 10)), np.radians(random.uniform(0, 1))]
         )
         stab_norm = normalize_value(u0[0], np.radians(-25), np.radians(25))
-        throttle_norm = normalize_value(u0[1], 0, 1)
-        action = np.array([stab_norm, throttle_norm])
+        action = np.array([stab_norm])
         state, reward, done, _, info = env.step(action)  # give as numpy array
         if state.all():
             states.append(state)
@@ -52,6 +51,7 @@ def test_F16():
     print(f"TOTAL REWARD = {round(sum(rewards), 4)}, TOTAL TIME = {times[-1]}")
     print("--- %s seconds ---" % (time.time() - start_time))
     denorm_states = list(map(F16.denormalize, states))
+    actions = list(map(F16.rescale_action, actions))
     print(len(times), len(env.ref_signal.theta_ref))
     utils_plots.result(
         denorm_states,
