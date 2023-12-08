@@ -30,7 +30,7 @@ def parse_args():
         help="the entity (team) of wandb's project")
 
     # Algorithm specific arguments
-    parser.add_argument("--num-envs", type=int, default=1,
+    parser.add_argument("--num-envs", type=int, default=4,
         help="the number of parallel game environments")
     parser.add_argument("--num-steps", type=int, default=512,
         help="the number of steps to run in each environment per policy rollout")
@@ -108,7 +108,7 @@ def state_logger(run_name, action=None, init_state=None):
             f.write(str(list(action)) + "\n")
 
 
-def write_to_tensorboard(writer, info):
+def write_to_tensorboard(writer, info, global_step, args):
     for item in info:
         if "final_info" in item:
             step_taken = 0

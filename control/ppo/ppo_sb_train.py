@@ -1,7 +1,7 @@
 import os
 import random
 import time
-from stable_baselines3 import SAC
+from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
 
 from utils import parse_args, write_python_file
@@ -30,15 +30,15 @@ write_python_file(
 )
 
 vec_env = make_vec_env(env_wrapper, n_envs=4)
-model = SAC(
+model = PPO(
     "MlpPolicy",
     vec_env,
     verbose=1,
     tensorboard_log=f"runs/{run_name}",
     seed=3,
-    #    use_sde=True,
+    use_sde=True,
 )
-model.learn(total_timesteps=15000000)
+model.learn(total_timesteps=2000000)
 model.save(f"runs/models/{run_name}")
 
 # del model  # remove to demonstrate saving and loading

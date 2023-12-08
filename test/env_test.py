@@ -35,12 +35,11 @@ def test_F16():
 
     for _ in range(0, n):
         # action = get_action()
-        u0 = np.array(
-            [np.radians(random.uniform(-10, 10)), np.radians(random.uniform(0, 1))]
-        )
+        # u0 = np.array(
+        #    [np.radians(random.uniform(-10, 10)), np.radians(random.uniform(0, 1))]
+        # )
         stab_norm = normalize_value(u0[0], np.radians(-25), np.radians(25))
-        throttle_norm = normalize_value(u0[1], 0, 1)
-        action = np.array([stab_norm, throttle_norm])
+        action = np.array([stab_norm])
         state, reward, done, _, info = env.step(action)  # give as numpy array
         if state.all():
             states.append(state)
