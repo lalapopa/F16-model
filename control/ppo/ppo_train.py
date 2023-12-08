@@ -8,7 +8,7 @@ import gymnasium as gym
 from torch.utils.tensorboard import SummaryWriter
 
 from ppo_model import Agent
-from F16model.env import F16 
+from F16model.env import F16
 from utils import parse_args, state_logger, weight_histograms, write_to_tensorboard
 
 ENV_CONFIG = {
@@ -77,6 +77,7 @@ if __name__ == "__main__":
 
     action_size = np.array(envs.single_action_space.shape).prod()
     obs_size = np.array(envs.single_observation_space.shape).prod()
+    print(obs_size, action_size)
 
     agent = Agent(obs_size, action_size).to(device)
     weight_histograms(writer, 0, agent.actor_mean)
@@ -124,7 +125,7 @@ if __name__ == "__main__":
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(
                 done
             ).to(device)
-            write_to_tensorboard(writer, info)
+            write_to_tensorboard(writer, info, global_step, args)
         print(f"|{update}|{num_updates + 1}|")
         # bootstrap value if not done
         with torch.no_grad():

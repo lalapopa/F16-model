@@ -5,16 +5,16 @@ from datetime import datetime
 
 def result(x_array, u_array, time, plot_name=None, ref_signal=None):
     plt.subplot(6, 1, 1)
-    plt.plot(time, np.degrees([i for i in u_array]), "-r")
+    plt.plot(time, np.degrees([i[0] for i in u_array]), "-r")
     plt.grid()
     plt.xlim(time[0], time[-1])
     plt.ylabel(r"$stab_{act}$, deg")
 
-    #     plt.subplot(7, 1, 2)
-    #     plt.plot(time, [i[1] for i in u_array], "-r")
-    #     plt.grid()
-    #     plt.xlim(time[0], time[-1])
-    #     plt.ylabel(r"$P$")
+    #    plt.subplot(6, 1, 2)
+    #    plt.plot(time, [i[1] for i in u_array], "-r")
+    #    plt.grid()
+    #    plt.xlim(time[0], time[-1])
+    #    plt.ylabel(r"$P$")
 
     plt.subplot(6, 1, 2)
     plt.plot(time, np.degrees([i[1] for i in x_array]), "-b")
@@ -32,7 +32,7 @@ def result(x_array, u_array, time, plot_name=None, ref_signal=None):
     plt.xlim(time[0], time[-1])
     plt.ylabel(r"$\theta\, \alpha$, deg")
 
-    #    plt.subplot(7, 1, 5)
+    #    plt.subplot(6, 1, 5)
     #    plt.plot(time, [i[3] for i in x_array], "-b")
     #    if ref_signal is not None:
     #        ref_speed = x_array[0][3]
@@ -50,7 +50,6 @@ def result(x_array, u_array, time, plot_name=None, ref_signal=None):
 
     plt.subplot(6, 1, 5)
     plt.plot(time, [i[4] for i in x_array], ":", label=r"$\theta_{err}$")
-    #    plt.plot(time, [i[6] for i in x_array], ":", label=r"$V_{err}$")
     plt.legend()
     plt.grid()
     plt.xlim(time[0], time[-1])

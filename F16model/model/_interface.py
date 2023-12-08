@@ -119,6 +119,7 @@ class F16model:
         clip_wz = np.clip(next_state.wz, np.radians(-60), np.radians(60))
         next_state.V = self.init_state.V
         next_state.wz = clip_wz
+        next_state.V = self.init_state.V
         self.state_prev = next_state
         return next_state
 

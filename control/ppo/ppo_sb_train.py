@@ -35,12 +35,10 @@ model = PPO(
     vec_env,
     verbose=1,
     tensorboard_log=f"runs/{run_name}",
-    seed=9,
-    batch_size=256,
-    learning_rate=0.00044,
-    device="cpu",
+    seed=3,
+    use_sde=True,
 )
-model.learn(total_timesteps=10000000)
+model.learn(total_timesteps=2000000)
 model.save(f"runs/models/{run_name}")
 
 # del model  # remove to demonstrate saving and loading

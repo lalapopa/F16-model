@@ -179,9 +179,9 @@ class F16(gym.Env):
         """
         Rescale action [stab]
         """
-        action = np.clip(action, -1, 1)
+        action = np.clip(action[0], -1, 1)
         stab_rescale = normalize_value(
-            action[0],
+            action,
             -plane.maxabsstab,
             plane.maxabsstab,
             inverse_transform=True,
