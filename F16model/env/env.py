@@ -85,17 +85,18 @@ class F16(gym.Env):
         return out_state, reward, self.done, False, info
 
     def compute_reward(self, state):
-        tracking_ref = np.array(
-            [
-                self.ref_signal.theta_ref[self.episode_length],
-            ]
-        )
-        tracking_err = tracking_ref - np.array([state.theta])
-        tracking_Q = np.array([1 / np.radians(10)])
+        # TODO: FIX reward when ref signal in opposite . 
+        tracking_ref = self.ref_signal.theta_ref[self.episode_length],
+        tracking_err = tracking_ref - state.theta
+        if np.sign(tracking_err) == 1: 
+            sign_coeff = 1
+        elif np.sign(tracking_err) == -1:
+            sign_coeff = 2
 
+        tracking_Q = np.array([1 / np.radians(30)])
         reward_vec = np.abs(
             np.clip(
-                tracking_err @ tracking_Q,
+                (sign_coeff * tracking_err) @ tracking_Q,
                 -np.ones(tracking_err.shape),
                 np.ones(tracking_err.shape),
             )
@@ -182,8 +183,8 @@ class F16(gym.Env):
         action = np.clip(action[0], -1, 1)
         stab_rescale = normalize_value(
             action,
-            -plane.maxabsstab,
-            plane.maxabsstab,
+            -plane.maxabsstab*0.2,
+            plane.maxabsstab*0.2,
             inverse_transform=True,
         )
         return stab_rescale

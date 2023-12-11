@@ -64,6 +64,7 @@ if __name__ == "__main__":
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+    print(f"Traninig using {device}")
 
     # env setup
     envs = gym.vector.SyncVectorEnv(
@@ -78,7 +79,6 @@ if __name__ == "__main__":
     action_size = np.array(envs.single_action_space.shape).prod()
     obs_size = np.array(envs.single_observation_space.shape).prod()
     print(obs_size, action_size)
-
     agent = Agent(obs_size, action_size).to(device)
     weight_histograms(writer, 0, agent.actor_mean)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
@@ -114,6 +114,7 @@ if __name__ == "__main__":
 
             # ALGO LOGIC: action logic
             with torch.no_grad():
+                print(next_obs)
                 action, logprob, _, value = agent.get_action_and_value(next_obs)
                 values[step] = value.flatten()
             actions[step] = action

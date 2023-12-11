@@ -1,5 +1,4 @@
-import numpy as np
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO, SAC
 from stable_baselines3.common.env_util import make_vec_env
 
 
@@ -7,13 +6,13 @@ from F16model.env import F16, get_trimmed_state_control
 import F16model.utils.plots as utils_plots
 
 CONST_STEP = True
-model_name = "runs/models/F16__utils__sb__1__1701981653_0b70.zip"
+model_name = "runs/models/F16__utils__sb__1__1702210304_07e9.zip"
 ENV_CONFIG = {
     "dt": 0.01,
     "tn": 10,
     "norm_state": True,
     "debug_state": False,
-    "determenistic_ref": False,
+    "determenistic_ref": True,
 }
 
 
@@ -39,7 +38,6 @@ def run_sim(x0, u0, max_episode=2000):
     rewards = []
     clock = []
     done = False
-    print(state)
     for _ in range(0, n):
         action, s = model.predict(state)
         (state, reward, done, info) = vec_env.step(action)
@@ -54,11 +52,15 @@ def run_sim(x0, u0, max_episode=2000):
     states = list(map(F16.denormalize, states))
     actions = list(map(F16.rescale_action, actions))
     ref_signal = vec_env.get_attr("ref_signal")
-    return states, actions, ref_signal[0].theta_ref, sum(rewards), clock
+    return states, actions, ref_signal[0].theta_ref, rewards, clock
 
 
 if __name__ == "__main__":
     x0, u0 = get_trimmed_state_control()
     states, actions, ref_signal, r, t = run_sim(x0, u0)
-    print(f"total reward {r}")
-    utils_plots.result(states, actions, t, "test_agent", ref_signal)
+    print(f"total reward {sum(r)}")
+    utils_plots.result(
+        states, actions, t, "agent_control_last_50", ref_signal, cut_index=-50
+    )
+    utils_plots.result(states, actions, t, "agent_control", ref_signal)
+    utils_plots.algo(r, t, plot_name="agent_reward")

@@ -12,7 +12,7 @@ import F16model.utils.plots as utils_plots
 SEED = 322
 ENV_CONFIG = {
     "dt": 0.01,
-    "tn": 10,
+    "tn": 5,
     "norm_state": False,
     "debug_state": False,
     "determenistic_ref": True,
