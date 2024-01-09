@@ -1,9 +1,11 @@
-from stable_baselines3 import PPO, SAC
+import numpy as np
+import random
+from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
-
 
 from F16model.env import F16, get_trimmed_state_control
 import F16model.utils.plots as utils_plots
+import F16model.utils.control_metrics as metrics
 
 CONST_STEP = True
 model_name = "runs/models/F16__utils__sb__1__1702210304_07e9.zip"
@@ -21,7 +23,7 @@ def env_wrapper():
     return env
 
 
-def run_sim(x0, u0, max_episode=2000):
+def run_sim():
     vec_env = make_vec_env(env_wrapper, n_envs=1)
     model = PPO(
         "MlpPolicy",
@@ -39,7 +41,7 @@ def run_sim(x0, u0, max_episode=2000):
     clock = []
     done = False
     for _ in range(0, n):
-        action, s = model.predict(state)
+        action, _ = model.predict(state)
         (state, reward, done, info) = vec_env.step(action)
         if state[0].all():
             states.append(state[0])
@@ -62,11 +64,17 @@ def run_sim(x0, u0, max_episode=2000):
 
 
 if __name__ == "__main__":
-    x0, u0 = get_trimmed_state_control()
-    states, actions, ref_signal, r, t = run_sim(x0, u0)
+    seed = 1
+    random.seed(seed)
+    np.random.seed(seed)
+
+    states, actions, ref_signal, r, t = run_sim()
     print(f"total reward {sum(r)}")
     utils_plots.result(
         states, actions, t, "agent_control_last_50", ref_signal, cut_index=-50
     )
     utils_plots.result(states, actions, t, "agent_control", ref_signal)
     utils_plots.algo(r, t, plot_name="agent_reward")
+    theta = np.degrees([i[2] for i in states])
+    theta_ref = np.degrees(ref_signal)
+    print(f"theta nMAE = {metrics.nMAE(theta_ref, theta) * 100}%")
