@@ -183,8 +183,8 @@ class F16(gym.Env):
         action = np.clip(action[0], -1, 1)
         stab_rescale = normalize_value(
             action,
-            -plane.maxabsstab*0.2,
-            plane.maxabsstab*0.2,
+            -plane.maxabsstab,
+            plane.maxabsstab,
             inverse_transform=True,
         )
         return stab_rescale

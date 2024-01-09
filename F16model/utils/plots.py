@@ -64,7 +64,7 @@ def result(x_array, u_array, time, plot_name=None, ref_signal=None, cut_index=No
         time[cut_index:],
         np.degrees([i[4] for i in x_array][cut_index:]),
     )
-    plt.ylabel(r"$\vartheta_{err}$, deg")
+    plt.ylabel(r"$\theta_{err}$, deg")
     plt.grid()
     plt.xlabel("t, sec")
 

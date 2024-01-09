@@ -56,6 +56,6 @@ def solve(x, u):
             (-2 * plane.Tstab * plane.Xistab * x.dstab - x.stab + control_stab)
             / (plane.Tstab**2)
         ),
-        Pa=float(model.engine.engine_power_level(x.Pa, control_throttle)),
+        Pa=float(model.engine.power_level(x.Pa, control_throttle)),
     )
     return Dx

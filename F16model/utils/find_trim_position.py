@@ -25,7 +25,7 @@ class Cost:
         )
 
     def calculate(self, u):
-        u_control = Control(u[0], u[1]) # TODO: clean up work with custom class
+        u_control = Control(u[0], u[1])  # TODO: clean up work with custom class
         x0 = States(
             Ox=0,
             Oy=self.H,
@@ -63,7 +63,6 @@ def optimize_loop(u, init_condition):
             run_trim = False
         current_iter += 1
         last_cost = eval_cost
-    print(f"RESULT FINDED = {out}")
     return last_cost, Control(out[0], out[1]), out[2], out[2]
 
 
@@ -79,7 +78,7 @@ def trim_find(array, init_condition):
         all_u_trimed.append(u_trim)
         all_alphas.append(alpha)
         all_thetas.append(theta)
-        logging.info(f"combination = {i}; cost = {cost}; trim = {u_trim}")
+        logging.info(f"combination = {i}; cost = {cost} / {eps}; trim = {u_trim}")
         if cost <= eps:
             break
     return (
@@ -97,6 +96,7 @@ def run(V0, Oy0):
     combinations = np.array(
         np.meshgrid(stab_range, thrust_range, alpha_range)
     ).T.reshape(-1, 3)
+    np.random.shuffle(combinations)
     logging.info(f"Total combinations = {len(combinations)}")
     init_condition = (V0, Oy0)
     (
@@ -125,6 +125,6 @@ if __name__ == "__main__":
         datefmt="%Y%m%d%H%M%S",
     )
     # Initial condions
-    H = 10000
-    V = 150
+    H = 8000
+    V = 80
     print(run(V, H))
