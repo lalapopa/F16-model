@@ -57,11 +57,9 @@ def result(x_array, u_array, time, plot_name=None, ref_signal=None, cut_index=No
     plt.subplot(6, 1, 5)
     plt.plot(
         time[cut_index:],
-        [i[4] for i in x_array][cut_index:],
-        ":",
-        label=r"$\theta_{err}$",
+        np.degrees([i[4] for i in x_array][cut_index:]),
     )
-    plt.legend()
+    plt.ylabel(r"$\theta_{err}$, deg")
     plt.grid()
     plt.xlabel("t, sec")
 
