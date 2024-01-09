@@ -5,27 +5,27 @@ from datetime import datetime
 
 def result(x_array, u_array, time, plot_name=None, ref_signal=None, cut_index=None):
     cut_index = _get_cut_index(cut_index)
-    plt.subplot(6, 1, 1)
+    plt.subplot(5, 1, 1)
     plt.plot(time[cut_index:], np.degrees([i for i in u_array])[cut_index:], "-r")
     plt.grid()
-    plt.ylabel(r"$stab_{act}$, deg")
+    plt.ylabel(r"$\varphi$, deg")
     #    plt.subplot(6, 1, 2)
     #    plt.plot(time, [i[1] for i in u_array], "-r")
     #    plt.grid()
     #    plt.xlim(time[0], time[-1])
     #    plt.ylabel(r"$P$")
 
-    plt.subplot(6, 1, 2)
+    plt.subplot(5, 1, 2)
     plt.plot(time[cut_index:], np.degrees([i[1] for i in x_array])[cut_index:], "-b")
     plt.grid()
     plt.ylabel(r"$\omega_{z}$, deg/sec")
 
-    plt.subplot(6, 1, 3)
+    plt.subplot(5, 1, 3)
     plt.plot(
         time[cut_index:],
         np.degrees([i[2] for i in x_array])[cut_index:],
         "-b",
-        label=r"$\theta$",
+        label=r"$\vartheta$",
     )
     plt.plot(
         time[cut_index:],
@@ -34,10 +34,15 @@ def result(x_array, u_array, time, plot_name=None, ref_signal=None, cut_index=No
         label=r"$\alpha$",
     )
     if ref_signal is not None:
-        plt.plot(time[cut_index:], np.degrees(ref_signal)[cut_index:], ":")
+        plt.plot(
+            time[cut_index:],
+            np.degrees(ref_signal)[cut_index:],
+            ":",
+            label=r"$\vartheta_{ref}$",
+        )
     plt.legend()
     plt.grid()
-    plt.ylabel(r"$\theta\, \alpha$, deg")
+    plt.ylabel(r"$\vartheta\, \alpha$, deg")
 
     #    plt.subplot(6, 1, 5)
     #    plt.plot(time, [i[3] for i in x_array], "-b")
@@ -49,24 +54,22 @@ def result(x_array, u_array, time, plot_name=None, ref_signal=None, cut_index=No
     #    plt.xlim(time[0], time[-1])
     #    plt.xlabel("t, sec")
 
-    plt.subplot(6, 1, 4)
+    plt.subplot(5, 1, 4)
     plt.plot(time[cut_index:], [i[0] for i in x_array][cut_index:], "-b")
     plt.ylabel("$H$, m")
     plt.grid()
 
-    plt.subplot(6, 1, 5)
+    plt.subplot(5, 1, 5)
     plt.plot(
         time[cut_index:],
-        [i[4] for i in x_array][cut_index:],
-        ":",
-        label=r"$\theta_{err}$",
+        np.degrees([i[4] for i in x_array][cut_index:]),
     )
-    plt.legend()
+    plt.ylabel(r"$\vartheta_{err}$, deg")
     plt.grid()
     plt.xlabel("t, sec")
 
     if plot_name:
-        plot_name = plot_name + ".png"
+        plot_name = plot_name + ".svg"
     else:
         RUN_TIME = datetime.now().strftime("%y-%m-%d-%H-%M-%S")
         plot_name = RUN_TIME + ".png"

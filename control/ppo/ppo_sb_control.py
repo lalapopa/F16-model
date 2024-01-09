@@ -52,7 +52,13 @@ def run_sim(x0, u0, max_episode=2000):
     states = list(map(F16.denormalize, states))
     actions = list(map(F16.rescale_action, actions))
     ref_signal = vec_env.get_attr("ref_signal")
-    return states, actions, ref_signal[0].theta_ref, rewards, clock
+    return (
+        states[:-1],
+        actions[:-1],
+        ref_signal[0].theta_ref[:-1],
+        rewards[:-1],
+        clock[:-1],
+    )
 
 
 if __name__ == "__main__":
