@@ -32,19 +32,34 @@ class Agent(nn.Module):
             layer_init(nn.Linear(64, action_shape), std=0.01),
         )
         self.actor_logstd = nn.Parameter(torch.zeros(1, action_shape))
+        self.gsde_logstd = nn.Parameter(torch.zeros(1, action_shape), requires_grad=True)
+        self.gsde_mean = nn.Linear(obs_shape, action_shape)
+        # Add action mean for noise as Linear nn:  <22-01-24, yourname> #
+             
 
     def get_value(self, x):
         return self.critic(x)
 
+    def sample_theta_gsde(self, x):
+        action_mean = self.gsde_mean(x)
+        gsde_std = torch.exp(self.gsde_logstd.expand_as(action_mean))
+        self.theta_gsde = Normal(0, gsde_std + 1e-6).rsample()
+
     def get_action_and_value(self, x, action=None):
         action_mean = self.actor_mean(x)
-        action_logstd = self.actor_logstd.expand_as(action_mean)
-        action_std = torch.exp(action_logstd)
-        probs = Normal(action_mean, action_std)
+        action_std = torch.exp(self.actor_logstd.expand_as(action_mean))
+        probs = Normal(action_mean, action_std + 1e-6)
+
         if action is None:
-            action = probs.sample()
+            noise = self.theta_gsde
+            action = probs.mean + noise 
         log_prob = probs.log_prob(action)
-        return action, log_prob.sum(1), probs.entropy().sum(1), self.critic(x)
+        return (
+            action,
+            log_prob.sum(1),
+            probs.entropy().sum(1),
+            self.critic(x),
+        )
 
     def save(self, path_name):
         try:
@@ -54,8 +69,13 @@ class Agent(nn.Module):
         torch.save(self.actor_logstd, f"{path_name}/actor_logstd")
         torch.save(self.actor_mean, f"{path_name}/actor_mean")
         torch.save(self.critic, f"{path_name}/critic")
+        torch.save(self.gsde_logstd, f"{path_name}/gsde_logstd")
+        torch.save(self.gsde_mean, f"{path_name}/gsde_mean")
 
     def load(self, path_name):
         self.actor_logstd = torch.load(f"{path_name}/actor_logstd")
         self.actor_mean = torch.load(f"{path_name}/actor_mean")
         self.critic = torch.load(f"{path_name}/critic")
+        self.gsde_logstd = torch.load(f"{path_name}/gsde_logstd")
+        self.gsde_mean = torch.load(f"{path_name}/gsde_mean")
+

@@ -1,3 +1,4 @@
+import os 
 import random
 import time
 import numpy as np
@@ -7,9 +8,9 @@ import torch.optim as optim
 import gymnasium as gym
 from torch.utils.tensorboard import SummaryWriter
 
-from ppo_model import Agent
+from ppo_model_gsde import Agent
 from F16model.env import F16
-from utils import parse_args, state_logger, weight_histograms, write_to_tensorboard
+from utils import parse_args, state_logger, weight_histograms, write_to_tensorboard, write_python_file 
 
 ENV_CONFIG = {
     "dt": 0.01,
@@ -32,8 +33,15 @@ def make_env(seed):
 
 if __name__ == "__main__":
     args = parse_args()
+
     run_name = f"F16__{args.exp_name}__{args.seed}__{str(int(time.time()))}_{('%032x' % random.getrandbits(128))[:4]}"
     print(f"Start running: {run_name}")
+    write_python_file(
+        os.path.abspath(__file__), f"runs/{run_name}/{os.path.basename(__file__)}"
+    )
+    write_python_file(
+        os.path.abspath(__file__).replace("train", "model"), f"runs/{run_name}/{os.path.basename(__file__).replace('train', 'model')}"
+    )
     if args.track:
         import wandb
 
@@ -78,7 +86,7 @@ if __name__ == "__main__":
 
     action_size = np.array(envs.single_action_space.shape).prod()
     obs_size = np.array(envs.single_observation_space.shape).prod()
-    print(obs_size, action_size)
+
     agent = Agent(obs_size, action_size).to(device)
     weight_histograms(writer, 0, agent.actor_mean)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
@@ -105,6 +113,9 @@ if __name__ == "__main__":
             frac = 1.0 - (update - 1.0) / num_updates
             lrnow = frac * args.learning_rate
             optimizer.param_groups[0]["lr"] = lrnow
+
+        with torch.no_grad():
+            agent.sample_theta_gsde(next_obs)
 
         for step in range(0, args.num_steps):
             global_step += 1 * args.num_envs
@@ -177,11 +188,12 @@ if __name__ == "__main__":
             for start in range(0, args.batch_size, args.minibatch_size):
                 end = start + args.minibatch_size
                 mb_inds = b_inds[start:end]
-
+                agent.sample_theta_gsde(b_obs[mb_inds])
+                print(f"before Deadge\nobs:{b_obs[mb_inds]}\naction:{b_actions.long()[mb_inds]}")
                 _, newlogprob, entropy, newvalue = agent.get_action_and_value(
                     b_obs[mb_inds], b_actions.long()[mb_inds]
                 )
-                print(f"{newlogprob = }, {entropy = }, {newvalue = }")
+                print(f"{newlogprob = }\n{entropy = }\n{newvalue = }")
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()  # exp(log(p) - log(q)) = p/q
 
@@ -198,7 +210,7 @@ if __name__ == "__main__":
                     mb_advantages = (mb_advantages - mb_advantages.mean()) / (
                         mb_advantages.std() + 1e-8
                     )
-
+                print(f'{mb_advantages = }')
                 # Policy loss
                 pg_loss1 = -mb_advantages * ratio  # - A(s,a) * policy_new/ policy_old
                 pg_loss2 = -mb_advantages * torch.clamp(
@@ -223,7 +235,7 @@ if __name__ == "__main__":
 
                 entropy_loss = entropy.mean()
                 loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
-
+                print(f"{loss = }\n{entropy_loss = }")
                 optimizer.zero_grad()
                 loss.backward()
                 nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)

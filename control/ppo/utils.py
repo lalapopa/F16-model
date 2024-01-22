@@ -17,7 +17,7 @@ def parse_args():
         help="the learning rate of the optimizer")
     parser.add_argument("--seed", type=int, default=1,
         help="seed of the experiment")
-    parser.add_argument("--total-timesteps", type=int, default=500000,
+    parser.add_argument("--total-timesteps", type=int, default=1000000,
         help="total timesteps of the experiments")
     parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, `torch.backends.cudnn.deterministic=False`")
@@ -43,7 +43,7 @@ def parse_args():
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
         help="the lambda for the general advantage estimation")
-    parser.add_argument("--num-minibatches", type=int, default=64,
+    parser.add_argument("--num-minibatches", type=int, default=128,
         help="the number of mini-batches")
     parser.add_argument("--update-epochs", type=int, default=10,
         help="the K epochs to update the policy")
@@ -57,7 +57,7 @@ def parse_args():
         help="coefficient of the entropy")
     parser.add_argument("--vf-coef", type=float, default=0.5,
         help="coefficient of the value function")
-    parser.add_argument("--max-grad-norm", type=float, default=0.5,
+    parser.add_argument("--max-grad-norm", type=float, default=0.2,
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
@@ -146,13 +146,12 @@ def write_to_tensorboard(writer, info, global_step, args):
 
 
 def write_python_file(filename, save_name):
+    print(filename, save_name)
     with open(filename) as f:
         data = f.read()
-        f.close()
 
-    if not os.path.exists(save_name):
+    if not os.path.exists(os.path.dirname(save_name)):
         os.makedirs(os.path.dirname(save_name))
 
     with open(save_name, mode="w") as f:
         f.write(data)
-        f.close()
