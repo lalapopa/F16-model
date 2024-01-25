@@ -8,9 +8,9 @@ from F16model.env import F16, get_trimmed_state_control
 from F16model.data import plane
 import F16model.utils.plots as utils_plots
 import F16model.utils.control as utils_control
-from ppo_model import Agent
+from ppo_model_gsde import Agent
 
-model_name = "runs/models/F16__utils__1__1702147442_2853"
+model_name = "runs/models/F16__utils__1__1705996043_bbe7"
 CONST_STEP = True
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ENV_CONFIG = {
@@ -31,6 +31,8 @@ def run_sim(x0, u0, max_episode=2000):
     agent.load(model_name)
     state, _ = env.reset()
 
+    state = torch.Tensor(state).to(device).reshape(-1, obs_size)
+    agent.sample_theta_gsde(state)
     actions = []
     states = []
     rewards = []
@@ -38,7 +40,7 @@ def run_sim(x0, u0, max_episode=2000):
     for _ in range(0, 2048):
         state = torch.Tensor(state).to(device).reshape(-1, obs_size)
         action, _, _, _ = agent.get_action_and_value(state)
-        action = action.cpu().numpy()
+        action = action.cpu().detach().numpy()
         state, reward, done, _, info = env.step(action)
         if state.all():
             states.append(state)
@@ -57,4 +59,4 @@ if __name__ == "__main__":
     x0, u0 = get_trimmed_state_control()
     states, actions, ref_signal, r, t = run_sim(x0, u0)
     print(f"total reward {r}")
-    utils_plots.result(states, actions, t, "test_agent", ref_signal)
+    utils_plots.result(states, actions, t, ref_signal=ref_signal)

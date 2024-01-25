@@ -76,6 +76,7 @@ def result(x_array, u_array, time, plot_name=None, ref_signal=None, cut_index=No
     plt.gcf().set_size_inches(8, 10)
     plt.tight_layout()
     plt.savefig(f"./logs/{plot_name}", dpi=300)
+    print(f"Plots saved in: ./logs/{plot_name}")
     plt.clf()
 
 

@@ -1,4 +1,4 @@
-import os 
+import os
 import random
 import time
 import numpy as np
@@ -10,7 +10,13 @@ from torch.utils.tensorboard import SummaryWriter
 
 from ppo_model_gsde import Agent
 from F16model.env import F16
-from utils import parse_args, state_logger, weight_histograms, write_to_tensorboard, write_python_file 
+from utils import (
+    parse_args,
+    state_logger,
+    weight_histograms,
+    write_to_tensorboard,
+    write_python_file,
+)
 
 ENV_CONFIG = {
     "dt": 0.01,
@@ -40,7 +46,8 @@ if __name__ == "__main__":
         os.path.abspath(__file__), f"runs/{run_name}/{os.path.basename(__file__)}"
     )
     write_python_file(
-        os.path.abspath(__file__).replace("train", "model"), f"runs/{run_name}/{os.path.basename(__file__).replace('train', 'model')}"
+        os.path.abspath(__file__).replace("train", "model"),
+        f"runs/{run_name}/{os.path.basename(__file__).replace('train', 'model')}",
     )
     if args.track:
         import wandb
@@ -114,9 +121,6 @@ if __name__ == "__main__":
             lrnow = frac * args.learning_rate
             optimizer.param_groups[0]["lr"] = lrnow
 
-        with torch.no_grad():
-            agent.sample_theta_gsde(next_obs)
-
         for step in range(0, args.num_steps):
             global_step += 1 * args.num_envs
             obs[step] = next_obs
@@ -124,6 +128,7 @@ if __name__ == "__main__":
 
             # ALGO LOGIC: action logic
             with torch.no_grad():
+                agent.sample_theta_gsde(next_obs)
                 action, logprob, _, value = agent.get_action_and_value(next_obs)
                 values[step] = value.flatten()
             actions[step] = action
@@ -189,7 +194,9 @@ if __name__ == "__main__":
                 end = start + args.minibatch_size
                 mb_inds = b_inds[start:end]
                 agent.sample_theta_gsde(b_obs[mb_inds])
-                print(f"before Deadge\nobs:{b_obs[mb_inds]}\naction:{b_actions.long()[mb_inds]}")
+                print(
+                    f"before Deadge\nobs:{b_obs[mb_inds]}\naction:{b_actions.long()[mb_inds]}"
+                )
                 _, newlogprob, entropy, newvalue = agent.get_action_and_value(
                     b_obs[mb_inds], b_actions.long()[mb_inds]
                 )
@@ -210,7 +217,7 @@ if __name__ == "__main__":
                     mb_advantages = (mb_advantages - mb_advantages.mean()) / (
                         mb_advantages.std() + 1e-8
                     )
-                print(f'{mb_advantages = }')
+                print(f"{mb_advantages = }")
                 # Policy loss
                 pg_loss1 = -mb_advantages * ratio  # - A(s,a) * policy_new/ policy_old
                 pg_loss2 = -mb_advantages * torch.clamp(

@@ -32,10 +32,10 @@ class Agent(nn.Module):
             layer_init(nn.Linear(64, action_shape), std=0.01),
         )
         self.actor_logstd = nn.Parameter(torch.zeros(1, action_shape))
-        self.gsde_logstd = nn.Parameter(torch.zeros(1, action_shape), requires_grad=True)
+        self.gsde_logstd = nn.Parameter(
+            torch.zeros(1, action_shape), requires_grad=True
+        )
         self.gsde_mean = nn.Linear(obs_shape, action_shape)
-        # Add action mean for noise as Linear nn:  <22-01-24, yourname> #
-             
 
     def get_value(self, x):
         return self.critic(x)
@@ -43,16 +43,16 @@ class Agent(nn.Module):
     def sample_theta_gsde(self, x):
         action_mean = self.gsde_mean(x)
         gsde_std = torch.exp(self.gsde_logstd.expand_as(action_mean))
-        self.theta_gsde = Normal(0, gsde_std + 1e-6).rsample()
+        self.theta_gsde = Normal(0, gsde_std).rsample()
 
     def get_action_and_value(self, x, action=None):
         action_mean = self.actor_mean(x)
         action_std = torch.exp(self.actor_logstd.expand_as(action_mean))
-        probs = Normal(action_mean, action_std + 1e-6)
+        probs = Normal(action_mean, action_std)
 
         if action is None:
             noise = self.theta_gsde
-            action = probs.mean + noise 
+            action = probs.sample() + noise
         log_prob = probs.log_prob(action)
         return (
             action,
@@ -78,4 +78,3 @@ class Agent(nn.Module):
         self.critic = torch.load(f"{path_name}/critic")
         self.gsde_logstd = torch.load(f"{path_name}/gsde_logstd")
         self.gsde_mean = torch.load(f"{path_name}/gsde_mean")
-
