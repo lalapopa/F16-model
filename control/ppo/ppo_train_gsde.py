@@ -121,6 +121,8 @@ if __name__ == "__main__":
             lrnow = frac * args.learning_rate
             optimizer.param_groups[0]["lr"] = lrnow
 
+        with torch.no_grad():
+            agent.sample_theta_gsde(next_obs)
         for step in range(0, args.num_steps):
             global_step += 1 * args.num_envs
             obs[step] = next_obs
@@ -128,7 +130,6 @@ if __name__ == "__main__":
 
             # ALGO LOGIC: action logic
             with torch.no_grad():
-                agent.sample_theta_gsde(next_obs)
                 action, logprob, _, value = agent.get_action_and_value(next_obs)
                 values[step] = value.flatten()
             actions[step] = action

@@ -33,7 +33,7 @@ model = PPO(
     vec_env,
     verbose=1,
     tensorboard_log=f"runs/{run_name}",
-    seed=10,
+    seed=3,
     use_sde=True,
 )
 model.learn(total_timesteps=1000000)

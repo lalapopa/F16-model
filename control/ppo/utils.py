@@ -13,7 +13,7 @@ def parse_args():
         help="the name of this experiment")
     parser.add_argument("--gym-id", type=str, default="LunarLander-v2",
         help="the id of the gym environment")
-    parser.add_argument("--learning-rate", type=float, default=0.000095,
+    parser.add_argument("--learning-rate", type=float, default=0.0003,
         help="the learning rate of the optimizer")
     parser.add_argument("--seed", type=int, default=1,
         help="seed of the experiment")
@@ -43,7 +43,7 @@ def parse_args():
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
         help="the lambda for the general advantage estimation")
-    parser.add_argument("--num-minibatches", type=int, default=64,
+    parser.add_argument("--num-minibatches", type=int, default=128,
         help="the number of mini-batches")
     parser.add_argument("--update-epochs", type=int, default=10,
         help="the K epochs to update the policy")
@@ -57,7 +57,7 @@ def parse_args():
         help="coefficient of the entropy")
     parser.add_argument("--vf-coef", type=float, default=0.5,
         help="coefficient of the value function")
-    parser.add_argument("--max-grad-norm", type=float, default=0.1,
+    parser.add_argument("--max-grad-norm", type=float, default=0.5,
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
