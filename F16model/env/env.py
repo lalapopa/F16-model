@@ -57,6 +57,8 @@ class F16(gym.Env):
         self.episode_length = 0
         self.done = False
         self.prev_action = Control(0, 0)
+        self.prev_state = self.init_state
+        self.theta_integral = 0
 
     def step(self, action):
         if isinstance(action, np.ndarray):
@@ -67,7 +69,6 @@ class F16(gym.Env):
 
         state = self.model.step(action)
         self.clock += self.dt
-
         reward = self.check_state(state)  # If fly out of bound give -1000 reward
         reward += self.compute_reward(state)
 
@@ -85,10 +86,9 @@ class F16(gym.Env):
         return out_state, reward, self.done, False, info
 
     def compute_reward(self, state):
-        # TODO: FIX reward when ref signal in opposite . 
-        tracking_ref = self.ref_signal.theta_ref[self.episode_length],
+        tracking_ref = (self.ref_signal.theta_ref[self.episode_length],)
         tracking_err = tracking_ref - state.theta
-        if np.sign(tracking_err) == 1: 
+        if np.sign(tracking_err) == 1:
             sign_coeff = 1
         elif np.sign(tracking_err) == -1:
             sign_coeff = 2
@@ -101,8 +101,9 @@ class F16(gym.Env):
                 np.ones(tracking_err.shape),
             )
         )
-        reward = -1 / 3 * reward_vec.sum()
-
+        self.theta_integral += tracking_err[0]
+        integral_reward = self.dt * np.sqrt(np.abs(self.theta_integral))
+        reward = -1 / 3 * (reward_vec.sum() + integral_reward)
         return reward
 
     def state_transform(self, state):
@@ -113,6 +114,7 @@ class F16(gym.Env):
         theta
         alpha
         theta - theta_ref
+        theta_integral
         """
         state_short = {
             k: vars(state)[k] for k, _ in plane.state_bound.items() if k in vars(state)
@@ -122,6 +124,7 @@ class F16(gym.Env):
 
         theta_err = state.theta - self.ref_signal.theta_ref[self.episode_length]
         state_short.append(theta_err)
+        state_short.append(self.theta_integral)
         return np.array(state_short)
 
     def check_state(self, state):

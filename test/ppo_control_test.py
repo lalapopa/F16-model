@@ -1,7 +1,7 @@
 import numpy as np
 import random
 import torch
-import gym
+import gymnasium as gym
 
 from control.ppo.ppo_model import Agent
 
@@ -19,7 +19,7 @@ def make_env(gym_id, seed, idx, capture_video, run_name):
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    run_name = "LunarLander_test__utils__1__1701346044_3e3b"
+    run_name = "name"
     gym_id = "LunarLander-v2"
     total_steps = 500
     seed = 1

@@ -48,7 +48,7 @@ def test_F16():
             times.append(info["clock"])
         if done:
             break
-    print(f"TOTAL REWARD = {round(sum(rewards), 4)}, TOTAL TIME = {times[-1]}")
+    print(f"TOTAL REWARD = {np.round(sum(rewards), 4)}, TOTAL TIME = {times[-1]}")
     print("--- %s seconds ---" % (time.time() - start_time))
     denorm_states = list(map(F16.denormalize, states))
     actions = list(map(F16.rescale_action, actions))
@@ -83,7 +83,6 @@ def test_failed_run():
     done = False
     i = 0
     for action in clipped_actions:
-        print(action)
         state, reward, done, current_time, _ = env.step(action)  # give as numpy array
         i += 1
         if state.all():
