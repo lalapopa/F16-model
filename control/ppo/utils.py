@@ -15,12 +15,6 @@ def parse_args():
         help="the name of this experiment",
     )
     parser.add_argument(
-        "--gym-id",
-        type=str,
-        default="LunarLander-v2",
-        help="the id of the gym environment",
-    )
-    parser.add_argument(
         "--learning-rate",
         type=float,
         default=0.0003,
@@ -30,7 +24,7 @@ def parse_args():
     parser.add_argument(
         "--total-timesteps",
         type=int,
-        default=1000000,
+        default=200000,
         help="total timesteps of the experiments",
     )
     parser.add_argument(
@@ -109,7 +103,7 @@ def parse_args():
         help="the lambda for the general advantage estimation",
     )
     parser.add_argument(
-        "--num-minibatches", type=int, default=128, help="the number of mini-batches"
+        "--num-minibatches", type=int, default=64, help="the number of mini-batches"
     )
     parser.add_argument(
         "--update-epochs",
@@ -240,10 +234,12 @@ def write_to_tensorboard(writer, info, global_step, args):
                 if args.track:
                     wandb.log({"charts/episodic_return": i_reward})
                     wandb.log({"charts/episodic_length": i_length})
+            avg_returns = total_rewards/len(log_rewards)
             print(
-                f"Step: {global_step} EPs: {len(log_rewards)} AVG REWARDS: {total_rewards/len(log_rewards)}"
+                f"Step: {global_step} EPs: {len(log_rewards)} AVG episodes return: {avg_returns}"
             )
-            break
+            return avg_returns
+
 
 
 def write_python_file(filename, save_name):

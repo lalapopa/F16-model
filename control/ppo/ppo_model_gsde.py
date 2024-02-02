@@ -9,11 +9,9 @@ from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 
 from utils import (
-    parse_args,
     state_logger,
     weight_histograms,
     write_to_tensorboard,
-    write_python_file,
 )
 
 
@@ -29,6 +27,7 @@ class Agent(nn.Module):
     def __init__(self, env, config):
         super(Agent, self).__init__()
         self.config = config
+        self._setup_seed()
         self.action_shape = np.array(env.single_action_space.shape).prod()
         self.obs_shape = np.array(env.single_observation_space.shape).prod()
         self.critic = nn.Sequential(
@@ -36,14 +35,14 @@ class Agent(nn.Module):
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
-            layer_init(nn.Linear(64, 1), std=10.0),
+            layer_init(nn.Linear(64, 1)),
         )
         self.actor_mean = nn.Sequential(
             layer_init(nn.Linear(self.obs_shape, 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
-            layer_init(nn.Linear(64, self.action_shape), std=0.001),
+            layer_init(nn.Linear(64, self.action_shape)),
         )
         self.actor_logstd = nn.Parameter(torch.zeros(1, self.action_shape))
 
@@ -59,18 +58,18 @@ class Agent(nn.Module):
     def sample_theta_gsde(self, x):
         action_mean = self.gsde_mean(x)
         gsde_std = torch.exp(self.gsde_logstd.expand_as(action_mean))
-        self.theta_gsde = Normal(0, gsde_std).rsample()
+        self.theta_gsde = Normal(0, gsde_std + 1e-6).rsample()
 
-    def get_action_and_value(self, x, action=None):
-        action_mean = self.actor_mean(x)
+    def get_action_and_value(self, x, action=None, learn_feature=False):
+        action_mean = self.actor_mean(x) if learn_feature else self.actor_mean(x).detach()
         action_std = torch.exp(self.actor_logstd.expand_as(action_mean))
-        probs = Normal(action_mean, action_std)
+        probs = Normal(action_mean, action_std + 1e-6)
 
         if action is None:
             noise = self.theta_gsde
             action = probs.mean + noise
 
-        log_prob = probs.log_prob(action)
+        log_prob = probs.log_prob(action) if learn_feature else probs.log_prob(action.detach())
         return (
             action,
             log_prob.sum(1),
@@ -115,11 +114,9 @@ class Agent(nn.Module):
         torch.manual_seed(self.config.seed)
         torch.backends.cudnn.deterministic = self.config.torch_deterministic
 
-    def train(self):
-        run_name = f"F16__{self.config.exp_name}__{self.config.seed}__{str(int(time.time()))}_{('%032x' % random.getrandbits(128))[:4]}"
+    def train(self, run_name):
         print(f"Start running: {run_name}")
         writer = self._setup_tb_log(run_name)
-        self._setup_seed()
 
         device = torch.device(
             "cuda" if torch.cuda.is_available() and self.config.cuda else "cpu"
@@ -131,21 +128,22 @@ class Agent(nn.Module):
             self.parameters(), lr=self.config.learning_rate, eps=1e-5
         )
 
-        # ALGO Logic: Storage setup
         obs = torch.zeros(
             (self.config.num_steps, self.config.num_envs) + (self.obs_shape,)
         ).to(device)
         actions = torch.zeros(
             (self.config.num_steps, self.config.num_envs) + (self.action_shape,)
         ).to(device)
+        self.to(device)
         logprobs = torch.zeros((self.config.num_steps, self.config.num_envs)).to(device)
         rewards = torch.zeros((self.config.num_steps, self.config.num_envs)).to(device)
         dones = torch.zeros((self.config.num_steps, self.config.num_envs)).to(device)
         values = torch.zeros((self.config.num_steps, self.config.num_envs)).to(device)
-        # TRY NOT TO MODIFY: start the game
+
         global_step = 0
         start_time = time.time()
         obs_init, _ = self.env.reset(seed=self.config.seed)
+        max_retrun_metric = -np.inf 
 
         next_obs = torch.Tensor(obs_init).to(device)
         next_done = torch.zeros(self.config.num_envs).to(device)
@@ -165,7 +163,6 @@ class Agent(nn.Module):
                 obs[step] = next_obs
                 dones[step] = next_done
 
-                # ALGO LOGIC: action logic
                 with torch.no_grad():
                     action, logprob, _, value = self.get_action_and_value(next_obs)
                     values[step] = value.flatten()
@@ -178,8 +175,10 @@ class Agent(nn.Module):
                 next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(
                     done
                 ).to(device)
-                write_to_tensorboard(writer, info, global_step, self.config)
-            print(f"|{update}|{num_updates + 1}|")
+                avg_return = write_to_tensorboard(writer, info, global_step, self.config)
+                if avg_return:
+                    if avg_return > max_retrun_metric:
+                        max_retrun_metric = avg_return  
             # bootstrap value if not done
             with torch.no_grad():
                 next_value = self.get_value(next_obs).reshape(1, -1)
@@ -240,13 +239,13 @@ class Agent(nn.Module):
                     end = start + self.config.minibatch_size
                     mb_inds = b_inds[start:end]
                     self.sample_theta_gsde(b_obs[mb_inds])
-                    #                print(
-                    #                    f"before Deadge\nobs:{b_obs[mb_inds]}\naction:{b_actions.long()[mb_inds]}"
-                    #                )
+                    # print(
+                    #     f"before Deadge\nobs:{b_obs[mb_inds]}\naction:{b_actions.long()[mb_inds]}"
+                    # )
                     _, newlogprob, entropy, newvalue = self.get_action_and_value(
-                        b_obs[mb_inds], b_actions.long()[mb_inds]
+                        b_obs[mb_inds], b_actions.long()[mb_inds], learn_feature=True
                     )
-                    #                print(f"{newlogprob = }\n{entropy = }\n{newvalue = }")
+                    # print(f"{newlogprob = }\n{entropy = }\n{newvalue = }")
                     logratio = newlogprob - b_logprobs[mb_inds]
                     ratio = logratio.exp()  # exp(log(p) - log(q)) = p/q
 
@@ -302,6 +301,7 @@ class Agent(nn.Module):
                         self.parameters(), self.config.max_grad_norm
                     )
                     optimizer.step()
+                    print(f"Total_loss = {loss}")
 
                 if self.config.target_kl is not None:
                     if approx_kl > self.config.target_kl:
@@ -334,4 +334,4 @@ class Agent(nn.Module):
 
         self.save(f"runs/models/{run_name}")
         writer.close()
-        return
+        return max_retrun_metric  
