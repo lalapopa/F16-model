@@ -10,7 +10,6 @@ import F16model.data.plane as plane
 
 
 class F16(gym.Env):
-
     """
     Gym like enviroment for custom F16model.
     """
@@ -56,7 +55,6 @@ class F16(gym.Env):
         self.total_return = 0
         self.episode_length = 0
         self.done = False
-        self.prev_action = Control(0, 0)
         self.prev_state = self.init_state
         self.theta_integral = 0
 
@@ -69,14 +67,14 @@ class F16(gym.Env):
 
         state = self.model.step(action)
         self.clock += self.dt
+        self.clock = round(self.clock, 4)
         reward = self.check_state(state)  # If fly out of bound give -1000 reward
         reward += self.compute_reward(state)
 
         out_state = self.state_transform(state)
+        self.prev_state = state
         self.total_return += reward
         self.episode_length += 1
-
-        self.prev_action = action
 
         info = {
             "episode_length": self.episode_length,
@@ -88,22 +86,31 @@ class F16(gym.Env):
     def compute_reward(self, state):
         tracking_ref = (self.ref_signal.theta_ref[self.episode_length],)
         tracking_err = tracking_ref - state.theta
-        if np.sign(tracking_err) == 1:
-            sign_coeff = 1
-        elif np.sign(tracking_err) == -1:
-            sign_coeff = 2
+        if self.episode_length > 0:
+            tracking_ref_prev = (self.ref_signal.theta_ref[self.episode_length - 1],)
+            tracking_err_prev = tracking_ref_prev - self.prev_state.theta
+        else:
+            tracking_err_prev = tracking_err
 
-        tracking_Q = np.array([1 / np.radians(30)])
-        reward_vec = np.abs(
+        if np.sign(tracking_err) != np.sign(tracking_err_prev):
+            self.theta_integral = 0
+        elif 0 <= np.abs(tracking_err) <= 0.001:
+            self.theta_integral = 0
+        else:
+            self.theta_integral += tracking_err * self.dt
+
+        coef_I = np.array([1 / np.radians(30)])
+        integral_reward = np.abs(np.clip(self.theta_integral * coef_I, -1, 1))
+
+        coef_P = np.array([1 / np.radians(30)])
+        propotional_reward = np.abs(
             np.clip(
-                (sign_coeff * tracking_err) @ tracking_Q,
+                (tracking_err) @ coef_P,
                 -np.ones(tracking_err.shape),
                 np.ones(tracking_err.shape),
             )
-        )
-        self.theta_integral += tracking_err[0]
-        integral_reward = self.dt * np.sqrt(np.abs(self.theta_integral))
-        reward = -1 / 3 * (reward_vec.sum() + integral_reward)
+        )[0]
+        reward = -1 / 3 * (propotional_reward.sum() + integral_reward.sum())
         return reward
 
     def state_transform(self, state):
@@ -122,9 +129,12 @@ class F16(gym.Env):
         state_short = list(state_short.values())
         state_short = F16.normalize(state_short)  # Always output normalized states
 
-        theta_err = state.theta - self.ref_signal.theta_ref[self.episode_length]
+        theta_err = self.ref_signal.theta_ref[self.episode_length] - state.theta
         state_short.append(theta_err)
-        state_short.append(self.theta_integral)
+        if isinstance(self.theta_integral, np.ndarray):
+            state_short.append(self.theta_integral[0]/30)
+        else:
+            state_short.append(self.theta_integral)
         return np.array(state_short)
 
     def check_state(self, state):
@@ -191,9 +201,6 @@ class F16(gym.Env):
             inverse_transform=True,
         )
         return stab_rescale
-
-    def _action_size(self):
-        return self.prev_action.to_array().size
 
     def _state_size(self):
         return self.state_transform(self.init_state).size

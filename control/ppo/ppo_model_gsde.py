@@ -28,6 +28,7 @@ class Agent(nn.Module):
         super(Agent, self).__init__()
         self.config = config
         self._setup_seed()
+        device = self._get_device()
         self.action_shape = np.array(env.single_action_space.shape).prod()
         self.obs_shape = np.array(env.single_observation_space.shape).prod()
         self.critic = nn.Sequential(
@@ -35,21 +36,23 @@ class Agent(nn.Module):
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
-            layer_init(nn.Linear(64, 1)),
-        )
+            layer_init(nn.Linear(64, 1), std=1.0),
+        ).to(device)
         self.actor_mean = nn.Sequential(
             layer_init(nn.Linear(self.obs_shape, 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
-            layer_init(nn.Linear(64, self.action_shape)),
-        )
-        self.actor_logstd = nn.Parameter(torch.zeros(1, self.action_shape))
+            layer_init(nn.Linear(64, self.action_shape), std=0.01),
+        ).to(device)  # aka Policy
+        self.actor_logstd = nn.Parameter(
+            torch.zeros(1, self.action_shape), requires_grad=True
+        ).to(device)
 
-        self.gsde_mean = nn.Linear(self.obs_shape, self.action_shape)
+        self.gsde_mean = layer_init(nn.Linear(self.obs_shape, self.action_shape).to(device))
         self.gsde_logstd = nn.Parameter(
             torch.zeros(1, self.action_shape), requires_grad=True
-        )
+        ).to(device)
         self.env = env
 
     def get_value(self, x):
@@ -58,18 +61,22 @@ class Agent(nn.Module):
     def sample_theta_gsde(self, x):
         action_mean = self.gsde_mean(x)
         gsde_std = torch.exp(self.gsde_logstd.expand_as(action_mean))
-        self.theta_gsde = Normal(0, gsde_std + 1e-6).rsample()
+        self.theta_gsde = Normal(0, gsde_std).rsample()
 
     def get_action_and_value(self, x, action=None, learn_feature=False):
-        action_mean = self.actor_mean(x) if learn_feature else self.actor_mean(x).detach()
+        action_mean = (
+            self.actor_mean(x) if learn_feature else self.actor_mean(x).detach()
+        )
         action_std = torch.exp(self.actor_logstd.expand_as(action_mean))
-        probs = Normal(action_mean, action_std + 1e-6)
+        probs = Normal(action_mean, action_std)
 
         if action is None:
-            noise = self.theta_gsde
-            action = probs.mean + noise
+            noise = self.theta_gsde * action_std
+            action = probs.rsample() + noise
 
-        log_prob = probs.log_prob(action) if learn_feature else probs.log_prob(action.detach())
+        log_prob = (
+            probs.log_prob(action) if learn_feature else probs.log_prob(action.detach())
+        )
         return (
             action,
             log_prob.sum(1),
@@ -77,26 +84,32 @@ class Agent(nn.Module):
             self.critic(x),
         )
 
-    def save(self, path_name):
+    def save(self):
         try:
-            os.makedirs(path_name)
+            os.makedirs(f"{self.config.save_dir}/{self.run_name}")
         except FileExistsError:
             pass
-        torch.save(self.actor_logstd, f"{path_name}/actor_logstd")
-        torch.save(self.actor_mean, f"{path_name}/actor_mean")
-        torch.save(self.critic, f"{path_name}/critic")
-        torch.save(self.gsde_logstd, f"{path_name}/gsde_logstd")
-        torch.save(self.gsde_mean, f"{path_name}/gsde_mean")
+        torch.save(
+            self.actor_logstd, f"{self.config.save_dir}/{self.run_name}/actor_logstd"
+        )
+        torch.save(
+            self.actor_mean, f"{self.config.save_dir}/{self.run_name}/actor_mean"
+        )
+        torch.save(self.critic, f"{self.config.save_dir}/{self.run_name}/critic")
+        torch.save(
+            self.gsde_logstd, f"{self.config.save_dir}/{self.run_name}/gsde_logstd"
+        )
+        torch.save(self.gsde_mean, f"{self.config.save_dir}/{self.run_name}/gsde_mean")
 
     def load(self, path_name):
-        self.actor_logstd = torch.load(f"{path_name}/actor_logstd")
-        self.actor_mean = torch.load(f"{path_name}/actor_mean")
-        self.critic = torch.load(f"{path_name}/critic")
-        self.gsde_logstd = torch.load(f"{path_name}/gsde_logstd")
-        self.gsde_mean = torch.load(f"{path_name}/gsde_mean")
+        self.actor_logstd = torch.load(f"{path_name}/actor_logstd", map_location=self._get_device())
+        self.actor_mean = torch.load(f"{path_name}/actor_mean", map_location=self._get_device())
+        self.critic = torch.load(f"{path_name}/critic", map_location=self._get_device())
+        self.gsde_logstd = torch.load(f"{path_name}/gsde_logstd", map_location=self._get_device())
+        self.gsde_mean = torch.load(f"{path_name}/gsde_mean", map_location=self._get_device())
 
-    def _setup_tb_log(self, run_name):
-        writer = SummaryWriter(f"runs/{run_name}")
+    def _setup_tb_log(self):
+        writer = SummaryWriter(f"{self.config.save_dir}/{self.run_name}")
         writer.add_text(
             "hyperparameters",
             "|param|value|\n|-|-|\n%s"
@@ -114,13 +127,16 @@ class Agent(nn.Module):
         torch.manual_seed(self.config.seed)
         torch.backends.cudnn.deterministic = self.config.torch_deterministic
 
-    def train(self, run_name):
-        print(f"Start running: {run_name}")
-        writer = self._setup_tb_log(run_name)
-
-        device = torch.device(
+    def _get_device(self):
+        return torch.device(
             "cuda" if torch.cuda.is_available() and self.config.cuda else "cpu"
         )
+
+    def train(self, run_name):
+        self.run_name = run_name
+        print(f"Start running: {self.run_name}")
+        writer = self._setup_tb_log()
+        device = self._get_device()
         print(f"Traninig using {device}")
 
         weight_histograms(writer, 0, self.actor_mean)
@@ -128,28 +144,40 @@ class Agent(nn.Module):
             self.parameters(), lr=self.config.learning_rate, eps=1e-5
         )
 
+        self.to(device)
         obs = torch.zeros(
-            (self.config.num_steps, self.config.num_envs) + (self.obs_shape,)
+            (self.config.num_steps, self.config.num_envs) + (self.obs_shape,),
+            dtype=torch.float32,
         ).to(device)
         actions = torch.zeros(
-            (self.config.num_steps, self.config.num_envs) + (self.action_shape,)
+            (self.config.num_steps, self.config.num_envs) + (self.action_shape,),
+            dtype=torch.float32,
         ).to(device)
-        self.to(device)
-        logprobs = torch.zeros((self.config.num_steps, self.config.num_envs)).to(device)
-        rewards = torch.zeros((self.config.num_steps, self.config.num_envs)).to(device)
-        dones = torch.zeros((self.config.num_steps, self.config.num_envs)).to(device)
-        values = torch.zeros((self.config.num_steps, self.config.num_envs)).to(device)
+        logprobs = torch.zeros(
+            (self.config.num_steps, self.config.num_envs), dtype=torch.float32
+        ).to(device)
+        rewards = torch.zeros(
+            (self.config.num_steps, self.config.num_envs), dtype=torch.float32
+        ).to(device)
+        dones = torch.zeros(
+            (self.config.num_steps, self.config.num_envs), dtype=torch.float32
+        ).to(device)
+        values = torch.zeros(
+            (self.config.num_steps, self.config.num_envs), dtype=torch.float32
+        ).to(device)
 
         global_step = 0
         start_time = time.time()
         obs_init, _ = self.env.reset(seed=self.config.seed)
-        max_retrun_metric = -np.inf 
+        max_retrun_metric = -np.inf
 
         next_obs = torch.Tensor(obs_init).to(device)
         next_done = torch.zeros(self.config.num_envs).to(device)
         num_updates = self.config.total_timesteps // self.config.batch_size
         for update in range(1, num_updates + 1):
-            state_logger(run_name, init_state=self.env.call("init_state")[0].to_array())
+            state_logger(
+                self.run_name, init_state=self.env.call("init_state")[0].to_array()
+            )
 
             if self.config.anneal_lr:
                 frac = 1.0 - (update - 1.0) / num_updates
@@ -162,23 +190,24 @@ class Agent(nn.Module):
                 global_step += 1 * self.config.num_envs
                 obs[step] = next_obs
                 dones[step] = next_done
-
                 with torch.no_grad():
                     action, logprob, _, value = self.get_action_and_value(next_obs)
                     values[step] = value.flatten()
                 actions[step] = action
                 logprobs[step] = logprob
 
-                state_logger(run_name, action=action.cpu().numpy()[0])
+                state_logger(self.run_name, action=action.cpu().numpy()[0])
                 next_obs, reward, done, _, info = self.env.step(action.cpu().numpy())
                 rewards[step] = torch.tensor(reward).to(device).view(-1)
                 next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(
                     done
                 ).to(device)
-                avg_return = write_to_tensorboard(writer, info, global_step, self.config)
+                avg_return = write_to_tensorboard(
+                    writer, info, global_step, self.config
+                )
                 if avg_return:
                     if avg_return > max_retrun_metric:
-                        max_retrun_metric = avg_return  
+                        max_retrun_metric = avg_return
             # bootstrap value if not done
             with torch.no_grad():
                 next_value = self.get_value(next_obs).reshape(1, -1)
@@ -243,7 +272,7 @@ class Agent(nn.Module):
                     #     f"before Deadge\nobs:{b_obs[mb_inds]}\naction:{b_actions.long()[mb_inds]}"
                     # )
                     _, newlogprob, entropy, newvalue = self.get_action_and_value(
-                        b_obs[mb_inds], b_actions.long()[mb_inds], learn_feature=True
+                        b_obs[mb_inds], b_actions[mb_inds], learn_feature=True
                     )
                     # print(f"{newlogprob = }\n{entropy = }\n{newvalue = }")
                     logratio = newlogprob - b_logprobs[mb_inds]
@@ -301,12 +330,12 @@ class Agent(nn.Module):
                         self.parameters(), self.config.max_grad_norm
                     )
                     optimizer.step()
-                    print(f"Total_loss = {loss}")
 
                 if self.config.target_kl is not None:
                     if approx_kl > self.config.target_kl:
                         break
 
+            print(f"Total_loss = {loss}")
             y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
             var_y = np.var(y_true)
             explained_var = (
@@ -330,8 +359,8 @@ class Agent(nn.Module):
                 weight_histograms(writer, global_step, self.actor_mean)
             if round(global_step, -3) % 10000 == 0:
                 print(f"Saving model after {global_step}")
-                self.save(f"runs/models/{run_name}")
+                self.save()
 
-        self.save(f"runs/models/{run_name}")
+        self.save()
         writer.close()
-        return max_retrun_metric  
+        return max_retrun_metric

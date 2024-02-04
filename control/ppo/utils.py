@@ -1,6 +1,5 @@
 import os
 import argparse
-import wandb
 import numpy as np
 import torch.nn as nn
 from distutils.util import strtobool
@@ -8,12 +7,6 @@ from distutils.util import strtobool
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--exp-name",
-        type=str,
-        default=os.path.basename(__file__).rstrip(".py"),
-        help="the name of this experiment",
-    )
     parser.add_argument(
         "--learning-rate",
         type=float,
@@ -42,26 +35,6 @@ def parse_args():
         nargs="?",
         const=True,
         help="if toggled, cuda will be enabled by default",
-    )
-    parser.add_argument(
-        "--track",
-        type=lambda x: bool(strtobool(x)),
-        default=False,
-        nargs="?",
-        const=True,
-        help="if toggled, this experiment will be tracked with Weights and Biases",
-    )
-    parser.add_argument(
-        "--wandb-project-name",
-        type=str,
-        default="ppo-play",
-        help="the wandb's project name",
-    )
-    parser.add_argument(
-        "--wandb-entity",
-        type=str,
-        default=None,
-        help="the entity (team) of wandb's project",
     )
 
     # Algorithm specific arguments
@@ -154,6 +127,9 @@ def parse_args():
     parser.add_argument(
         "--note", type=str, default=None, help="additional info about run"
     )
+    parser.add_argument(
+        "--save-dir", type=str, default="runs/", help="where to save running info"
+    )
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
@@ -231,15 +207,11 @@ def write_to_tensorboard(writer, info, global_step, args):
                     i_length,
                     i_step,
                 )
-                if args.track:
-                    wandb.log({"charts/episodic_return": i_reward})
-                    wandb.log({"charts/episodic_length": i_length})
-            avg_returns = total_rewards/len(log_rewards)
+            avg_returns = total_rewards / len(log_rewards)
             print(
                 f"Step: {global_step} EPs: {len(log_rewards)} AVG episodes return: {avg_returns}"
             )
             return avg_returns
-
 
 
 def write_python_file(filename, save_name):

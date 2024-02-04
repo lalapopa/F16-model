@@ -80,13 +80,18 @@ def result(x_array, u_array, time, plot_name=None, ref_signal=None, cut_index=No
     plt.clf()
 
 
-def algo(rewards, time, plot_name, cut_index=None):
-    cut_index = _get_cut_index(cut_index)
+def algo(rewards, time, plot_name=None):
     plt.subplot(1, 1, 1)
     plt.plot(time, rewards)
+    plt.ylabel(r"Reward")
+    plt.xlabel(r"time, sec")
     plt.grid()
-    plot_name = plot_name + ".png"
-    plt.gcf().set_size_inches(8, 10)
+    if plot_name:
+        plot_name = plot_name + ".svg"
+    else:
+        RUN_TIME = datetime.now().strftime("%y-%m-%d-%H-%M-%S")
+        plot_name = RUN_TIME + "_algo.png"
+    plt.gcf().set_size_inches(8, 5)
     plt.tight_layout()
     plt.savefig(f"./logs/{plot_name}", dpi=300)
     plt.clf()
