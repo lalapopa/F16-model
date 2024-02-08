@@ -21,7 +21,7 @@ state_bound = {
     "Oy": [0, 35000],
     "wz": [np.radians(-150), np.radians(150)],
     "theta": [np.radians(-90), np.radians(270)],
-    "alpha": [np.radians(-20), np.radians(45)],
+    #     "alpha": [np.radians(-20), np.radians(45)],
 }
 
 random_state_bound = {

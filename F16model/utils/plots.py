@@ -27,12 +27,12 @@ def result(x_array, u_array, time, plot_name=None, ref_signal=None, cut_index=No
         "-b",
         label=r"$\vartheta$",
     )
-    plt.plot(
-        time[cut_index:],
-        np.degrees([i[3] for i in x_array])[cut_index:],
-        "--m",
-        label=r"$\alpha$",
-    )
+    #     plt.plot(
+    #         time[cut_index:],
+    #         np.degrees([i[3] for i in x_array])[cut_index:],
+    #         "--m",
+    #         label=r"$\alpha$",
+    #     )
     if ref_signal is not None:
         plt.plot(
             time[cut_index:],

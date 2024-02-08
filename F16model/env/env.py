@@ -61,11 +61,11 @@ class F16(gym.Env):
     def step(self, action):
         if isinstance(action, np.ndarray):
             action = F16.rescale_action(action)
-            action = Control(action, 0)
+            self.action = Control(action, 0)
         else:
             raise TypeError(f"Action has type '{type(action)}' should be np.array")
 
-        state = self.model.step(action)
+        state = self.model.step(self.action)
         self.clock += self.dt
         self.clock = round(self.clock, 4)
         reward = self.check_state(state)  # If fly out of bound give -1000 reward
@@ -99,7 +99,7 @@ class F16(gym.Env):
         else:
             self.theta_integral += tracking_err * self.dt
 
-        coef_I = np.array([1 / np.radians(30)])
+        coef_I = np.array([1 / np.radians(15)])
         integral_reward = np.abs(np.clip(self.theta_integral * coef_I, -1, 1))
 
         coef_P = np.array([1 / np.radians(30)])
@@ -110,7 +110,16 @@ class F16(gym.Env):
                 np.ones(tracking_err.shape),
             )
         )[0]
-        reward = -1 / 3 * (propotional_reward.sum() + integral_reward.sum())
+
+        if np.abs(self.action.to_array()[0]) > 0.5 * plane.maxabsstab:
+            big_control_penalty = np.abs(np.degrees(self.action.to_array()[0])) * 0.05
+        else:
+            big_control_penalty = 0
+        reward = (
+            -1
+            / 3
+            * (propotional_reward.sum() + integral_reward.sum() + big_control_penalty)
+        )
         return reward
 
     def state_transform(self, state):
@@ -119,7 +128,6 @@ class F16(gym.Env):
         Oy
         wz
         theta
-        alpha
         theta - theta_ref
         theta_integral
         """
@@ -132,7 +140,7 @@ class F16(gym.Env):
         theta_err = self.ref_signal.theta_ref[self.episode_length] - state.theta
         state_short.append(theta_err)
         if isinstance(self.theta_integral, np.ndarray):
-            state_short.append(self.theta_integral[0]/30)
+            state_short.append(self.theta_integral[0] / 30)
         else:
             state_short.append(self.theta_integral)
         return np.array(state_short)

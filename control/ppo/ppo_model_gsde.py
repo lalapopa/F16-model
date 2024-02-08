@@ -44,12 +44,16 @@ class Agent(nn.Module):
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, self.action_shape), std=0.01),
-        ).to(device)  # aka Policy
+        ).to(
+            device
+        )  # aka Policy
         self.actor_logstd = nn.Parameter(
             torch.zeros(1, self.action_shape), requires_grad=True
         ).to(device)
 
-        self.gsde_mean = layer_init(nn.Linear(self.obs_shape, self.action_shape).to(device))
+        self.gsde_mean = layer_init(
+            nn.Linear(self.obs_shape, self.action_shape).to(device)
+        )
         self.gsde_logstd = nn.Parameter(
             torch.zeros(1, self.action_shape), requires_grad=True
         ).to(device)
@@ -72,8 +76,7 @@ class Agent(nn.Module):
 
         if action is None:
             noise = self.theta_gsde * action_std
-            action = probs.rsample() + noise
-
+            action = probs.mean + noise
         log_prob = (
             probs.log_prob(action) if learn_feature else probs.log_prob(action.detach())
         )
@@ -102,11 +105,19 @@ class Agent(nn.Module):
         torch.save(self.gsde_mean, f"{self.config.save_dir}/{self.run_name}/gsde_mean")
 
     def load(self, path_name):
-        self.actor_logstd = torch.load(f"{path_name}/actor_logstd", map_location=self._get_device())
-        self.actor_mean = torch.load(f"{path_name}/actor_mean", map_location=self._get_device())
+        self.actor_logstd = torch.load(
+            f"{path_name}/actor_logstd", map_location=self._get_device()
+        )
+        self.actor_mean = torch.load(
+            f"{path_name}/actor_mean", map_location=self._get_device()
+        )
         self.critic = torch.load(f"{path_name}/critic", map_location=self._get_device())
-        self.gsde_logstd = torch.load(f"{path_name}/gsde_logstd", map_location=self._get_device())
-        self.gsde_mean = torch.load(f"{path_name}/gsde_mean", map_location=self._get_device())
+        self.gsde_logstd = torch.load(
+            f"{path_name}/gsde_logstd", map_location=self._get_device()
+        )
+        self.gsde_mean = torch.load(
+            f"{path_name}/gsde_mean", map_location=self._get_device()
+        )
 
     def _setup_tb_log(self):
         writer = SummaryWriter(f"{self.config.save_dir}/{self.run_name}")
@@ -141,7 +152,8 @@ class Agent(nn.Module):
 
         weight_histograms(writer, 0, self.actor_mean)
         optimizer = optim.Adam(
-            self.parameters(), lr=self.config.learning_rate, eps=1e-5
+            self.parameters(),
+            lr=self.config.learning_rate, amsgrad=True
         )
 
         self.to(device)
@@ -205,6 +217,9 @@ class Agent(nn.Module):
                 avg_return = write_to_tensorboard(
                     writer, info, global_step, self.config
                 )
+                if done.all():
+                    with torch.no_grad():
+                        self.sample_theta_gsde(next_obs)
                 if avg_return:
                     if avg_return > max_retrun_metric:
                         max_retrun_metric = avg_return

@@ -11,7 +11,7 @@ from utils import parse_args
 from ppo_train_gsde import make_env
 from ppo_model_gsde import Agent
 
-model_name = "runs/secret/F16__1__1707069195__0fc2"
+model_name = "runs/F16__1__1707287096__44c2"
 
 CONST_STEP = True
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -26,8 +26,11 @@ ENV_CONFIG = {
 
 def run_sim():
     args = parse_args()
-    args.seed = 397
-    #    args.seed = random.randint(1, 999)
+    #  args.seed = 397
+    # args.seed = 176
+    # args.seed = 790
+    # args.seed = 289  # 7619 -18 reward OMG
+    args.seed = random.randint(1, 999)
     print(f"Run with seed = {args.seed}")
     envs = gym.vector.SyncVectorEnv(
         [make_env(args.seed + i, ENV_CONFIG) for i in range(1)]
@@ -37,6 +40,7 @@ def run_sim():
     agent.load(model_name)
     state, _ = agent.env.reset()
     print(f"Start state: {agent.env.call('init_state')[0]}")
+
     state = torch.Tensor(state).to(device)
     agent.sample_theta_gsde(state)
 
@@ -45,6 +49,9 @@ def run_sim():
     rewards = []
     clock = []
     ref_signal = agent.env.call("ref_signal")[0].theta_ref[:-1]
+    print(
+        f"INIT THETA {np.degrees(F16.denormalize(state[0])[2])} | REF THETA {np.degrees(ref_signal[15])}"
+    )
     for i in range(0, 2048):
         state = torch.Tensor(state).to(device)
         action, _, _, _ = agent.get_action_and_value(state)
