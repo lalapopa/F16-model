@@ -42,7 +42,7 @@ def result(x_array, u_array, time, plot_name=None, ref_signal=None, cut_index=No
         )
     plt.legend()
     plt.grid()
-    plt.ylabel(r"$\vartheta\, \alpha$, deg")
+    plt.ylabel(r"$\vartheta\, deg")
 
     #    plt.subplot(6, 1, 5)
     #    plt.plot(time, [i[3] for i in x_array], "-b")
@@ -53,18 +53,22 @@ def result(x_array, u_array, time, plot_name=None, ref_signal=None, cut_index=No
     #    plt.grid()
     #    plt.xlim(time[0], time[-1])
     #    plt.xlabel("t, sec")
-
     plt.subplot(5, 1, 4)
-    plt.plot(time[cut_index:], [i[0] for i in x_array][cut_index:], "-b")
-    plt.ylabel("$H$, m")
+    plt.plot(
+        time[cut_index:],
+        np.degrees([i[3] for i in x_array][cut_index:])
+        - np.degrees([i[2] for i in x_array][cut_index:]),
+        "-b",
+        label=r"$\theta_{err}$",
+    )
+
+    plt.ylabel(r"Reward specific signals")
+    plt.legend()
     plt.grid()
 
     plt.subplot(5, 1, 5)
-    plt.plot(
-        time[cut_index:],
-        np.degrees([i[4] for i in x_array][cut_index:]),
-    )
-    plt.ylabel(r"$\theta_{err}$, deg")
+    plt.plot(time[cut_index:], [i[0] for i in x_array][cut_index:], "-b")
+    plt.ylabel("$H$, m")
     plt.grid()
     plt.xlabel("t, sec")
 

@@ -68,22 +68,27 @@ class Agent(nn.Module):
         self.theta_gsde = Normal(0, gsde_std).rsample()
 
     def get_action_and_value(self, x, action=None, learn_feature=False):
-        action_mean = (
+        action_mean_pi = (
             self.actor_mean(x) if learn_feature else self.actor_mean(x).detach()
         )
-        action_std = torch.exp(self.actor_logstd.expand_as(action_mean))
-        probs = Normal(action_mean, action_std)
+        action_std_pi = torch.exp(self.actor_logstd.expand_as(action_mean_pi))
+        probs_pi = Normal(action_mean_pi, action_std_pi)
 
         if action is None:
-            noise = self.theta_gsde * action_std
-            action = probs.mean + noise
+            noise = self.theta_gsde * action_std_pi
+            action_p = probs_pi.mean[:, 0] + noise[:, 0]
+            action_i = probs_pi.mean[:, 1] + noise[:, 1]
+            action = torch.transpose(torch.stack((action_p, action_i)), 0, 1)
+
         log_prob = (
-            probs.log_prob(action) if learn_feature else probs.log_prob(action.detach())
+            probs_pi.log_prob(action)
+            if learn_feature
+            else probs_pi.log_prob(action.detach())
         )
         return (
             action,
             log_prob.sum(1),
-            probs.entropy().sum(1),
+            probs_pi.entropy().sum(1),
             self.critic(x),
         )
 
@@ -152,8 +157,7 @@ class Agent(nn.Module):
 
         weight_histograms(writer, 0, self.actor_mean)
         optimizer = optim.Adam(
-            self.parameters(),
-            lr=self.config.learning_rate, amsgrad=True
+            self.parameters(), lr=self.config.learning_rate, amsgrad=True
         )
 
         self.to(device)
@@ -207,19 +211,18 @@ class Agent(nn.Module):
                     values[step] = value.flatten()
                 actions[step] = action
                 logprobs[step] = logprob
-
                 state_logger(self.run_name, action=action.cpu().numpy()[0])
                 next_obs, reward, done, _, info = self.env.step(action.cpu().numpy())
                 rewards[step] = torch.tensor(reward).to(device).view(-1)
                 next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(
                     done
                 ).to(device)
-                avg_return = write_to_tensorboard(
-                    writer, info, global_step, self.config
-                )
                 if done.all():
                     with torch.no_grad():
                         self.sample_theta_gsde(next_obs)
+                avg_return = write_to_tensorboard(
+                    writer, info, global_step, self.config
+                )
                 if avg_return:
                     if avg_return > max_retrun_metric:
                         max_retrun_metric = avg_return
@@ -335,6 +338,7 @@ class Agent(nn.Module):
 
                     entropy_loss = entropy.mean()
                     loss = (
+
                         pg_loss
                         - self.config.ent_coef * entropy_loss
                         + v_loss * self.config.vf_coef

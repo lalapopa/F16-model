@@ -11,7 +11,7 @@ from utils import parse_args
 from ppo_train_gsde import make_env
 from ppo_model_gsde import Agent
 
-model_name = "runs/F16__1__1707287096__44c2"
+model_name = "runs/1_testa/F16__1__1707501096__fbf2"
 
 CONST_STEP = True
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -58,17 +58,19 @@ def run_sim():
         action = action.cpu().detach().numpy()
         state, reward, done, _, info = agent.env.step(action)
         if done:
-            print("FOK")
+            print(f"Done by done flag!")
             break
-        if state.all():
-            states.append(state[0])
-            rewards.append(reward[0])
-            actions.append(action[0])
-            clock.append(info["clock"][0])
+        states.append(state[0])
+        rewards.append(reward[0])
+        actions.append(action[0])
+        clock.append(info["clock"][0])
+
     states = list(map(F16.denormalize, states))
     actions = list(map(F16.rescale_action, actions))
     cut_index = len(states)
+    print("after denorm")
     print(cut_index)
+
     return (
         states[:cut_index],
         actions[:cut_index],
