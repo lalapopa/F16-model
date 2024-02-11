@@ -57,6 +57,7 @@ class F16(gym.Env):
         self.done = False
         self.prev_state = self.init_state
         self.action_I = 0
+        self.action_P = 0
 
     def step(self, action):
         if isinstance(action, np.ndarray):
@@ -87,17 +88,18 @@ class F16(gym.Env):
     def compute_reward(self, state):
         tracking_ref = (self.ref_signal.theta_ref[self.episode_length],)
         tracking_err = np.sqrt(np.abs(tracking_ref - state.theta) / np.radians(50))
-        tracking_reward = (1 - 0.95) * - tracking_err
-        P_reward = (1 - 0.95) * -(np.sqrt( np.abs (self.action_P)))
-        I_reward = (1 - 0.95) * -(np.sqrt( np.abs (self.action_I)))
-
-        reward = (tracking_reward + P_reward + I_reward).sum()
+        tracking_reward = (1 - 0.99) * - tracking_err
+        P_reward = (1 - 0.99) * -(np.sqrt( np.abs (self.action_P)))
+        I_reward = (1 - 0.99) * -(np.sqrt( np.abs (self.action_I)))
+        k_P = self.config["k_kp"] * np.exp(-0.5 * self.clock)
+        k_I = self.config["k_ki"] * np.exp(-0.25 * self.clock)
+        reward = (tracking_reward + k_P * P_reward + k_I * I_reward).sum()
         return reward
 
     def integral_action_state_augmentation(self, action_pi):
-        self.action_I += 0.01 * ( np.clip(action_pi[1], a_min=-1, a_max=1) - action_pi[1])
+        self.action_I += self.config["T_aw"] * ( np.clip(action_pi[1], a_min=-1, a_max=1) - action_pi[1])
         self.action_P = action_pi[0] 
-        action = np.array([self.action_P + 0.01 * self.action_I])
+        action = np.array([self.action_P + self.config["T_i"] * self.action_I])
         return action
 
     def state_transform(self, state):
@@ -107,14 +109,19 @@ class F16(gym.Env):
         wz
         theta
         theta_ref
+        0.5 * (theta_ref - theta)
+        action_P
+        action_I
         """
         state_short = {
             k: vars(state)[k] for k, _ in plane.state_bound.items() if k in vars(state)
         }  # take keys that defines in state_boundfrom `States` class
         state_short = list(state_short.values())
         state_short = F16.normalize(state_short)  # Always output normalized states
-
         state_short.append(self.ref_signal.theta_ref[self.episode_length])
+        state_short.append(0.5 *(self.ref_signal.theta_ref[self.episode_length] - state.theta))
+        state_short.append(self.action_I)
+        state_short.append(self.action_P)
         return np.array(state_short)
 
     def check_state(self, state):

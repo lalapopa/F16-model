@@ -11,7 +11,7 @@ from utils import parse_args
 from ppo_train_gsde import make_env
 from ppo_model_gsde import Agent
 
-model_name = "runs/1_testa/F16__1__1707501096__fbf2"
+model_name = "runs/1_testa/F16__1__1707590905__fa08"
 
 CONST_STEP = True
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -21,6 +21,10 @@ ENV_CONFIG = {
     "norm_state": True,
     "debug_state": False,
     "determenistic_ref": False,
+    "T_aw": 0.01,
+    "T_i": 0.1,
+    "k_kp": 2,
+    "k_ki": 1,
 }
 
 

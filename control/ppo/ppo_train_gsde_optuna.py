@@ -13,8 +13,24 @@ from utils import (
 
 
 def objective(trial):
-    args.learning_rate = trial.suggest_float("lr", 1e-6, 5e-3, log=True)
+    args.learning_rate = trial.suggest_float("lr", 1e-6, 5e-2, log=True)
     args.num_minibatches = trial.suggest_int("num-minibatches", 32, 512, step=32)
+    args.clip_coef = trial.suggest_float("lr", 0.01, 2, log=True)
+
+    ENV_CONFIG = {
+        "dt": 0.01,
+        "tn": 10,
+        "norm_state": True,
+        "debug_state": False,
+        "determenistic_ref": False,
+        "T_aw": trial.suggest_float("T_aw", 0.01, 2),
+        "T_i": trial.suggest_float("T_aw", 0.01, 2),
+        "k_kp": trial.suggest_int("k_kp", 0, 1000, step=10),
+        "k_ki": trial.suggest_int("k_kp", 0, 1000, step=10),
+    }
+    envs = gym.vector.SyncVectorEnv(
+        [make_env(args.seed + i, ENV_CONFIG) for i in range(args.num_envs)]
+    )
 
     model = Agent(envs, args)
     run_name = f"F16__{args.seed}__{str(int(time.time()))}__{('%032x' % random.getrandbits(128))[:4]}"
@@ -26,24 +42,14 @@ def objective(trial):
         "control/ppo/ppo_model_gsde.py",
         f"{args.save_dir}/{run_name}/ppo_model_gsde.py",
     )  # stupid as shit
-    accuracy = model.train(run_name)
-    return accuracy
+    nMAE = model.train(run_name)
+    return nMAE
 
 
 if __name__ == "__main__":
 
-    ENV_CONFIG = {
-        "dt": 0.01,
-        "tn": 10,
-        "norm_state": True,
-        "debug_state": False,
-        "determenistic_ref": False,
-    }
     args = parse_args()
 
-    envs = gym.vector.SyncVectorEnv(
-        [make_env(args.seed + i, ENV_CONFIG) for i in range(args.num_envs)]
-    )
     study = optuna.create_study(direction="maximize")
     study.optimize(
         objective, n_trials=100, catch=(ValueError)

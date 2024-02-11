@@ -13,6 +13,7 @@ from utils import (
     weight_histograms,
     write_to_tensorboard,
 )
+import F16model.utils.control_metrics as utils_metrics
 
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
@@ -50,7 +51,6 @@ class Agent(nn.Module):
         self.actor_logstd = nn.Parameter(
             torch.zeros(1, self.action_shape), requires_grad=True
         ).to(device)
-
         self.gsde_mean = layer_init(
             nn.Linear(self.obs_shape, self.action_shape).to(device)
         )
@@ -185,7 +185,7 @@ class Agent(nn.Module):
         global_step = 0
         start_time = time.time()
         obs_init, _ = self.env.reset(seed=self.config.seed)
-        max_retrun_metric = -np.inf
+        max_nMAE_metric = -np.inf
 
         next_obs = torch.Tensor(obs_init).to(device)
         next_done = torch.zeros(self.config.num_envs).to(device)
@@ -224,8 +224,15 @@ class Agent(nn.Module):
                     writer, info, global_step, self.config
                 )
                 if avg_return:
-                    if avg_return > max_retrun_metric:
-                        max_retrun_metric = avg_return
+                    nMAE_avg = 0
+                    for i in range(self.config.num_envs):
+                        ref_signal = self.env.call("ref_signal")[i].theta_ref[:-1]
+                        obs_single = [_[i][2] for _ in obs][:len(ref_signal)]
+                        nMAE_avg += utils_metrics.nMAE(ref_signal, obs_single) / self.config.num_envs
+                    if nMAE_avg > max_nMAE_metric:
+                        max_nMAE_metric = nMAE_avg
+                        print("nMAE max: ", max_nMAE_metric)
+
             # bootstrap value if not done
             with torch.no_grad():
                 next_value = self.get_value(next_obs).reshape(1, -1)
@@ -382,4 +389,4 @@ class Agent(nn.Module):
 
         self.save()
         writer.close()
-        return max_retrun_metric
+        return max_nMAE_metric  
