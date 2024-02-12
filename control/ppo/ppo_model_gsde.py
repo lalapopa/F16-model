@@ -185,7 +185,7 @@ class Agent(nn.Module):
         global_step = 0
         start_time = time.time()
         obs_init, _ = self.env.reset(seed=self.config.seed)
-        max_nMAE_metric = -np.inf
+        min_nMAE_metric = np.inf
 
         next_obs = torch.Tensor(obs_init).to(device)
         next_done = torch.zeros(self.config.num_envs).to(device)
@@ -227,11 +227,14 @@ class Agent(nn.Module):
                     nMAE_avg = 0
                     for i in range(self.config.num_envs):
                         ref_signal = self.env.call("ref_signal")[i].theta_ref[:-1]
-                        obs_single = [_[i][2] for _ in obs][:len(ref_signal)]
-                        nMAE_avg += utils_metrics.nMAE(ref_signal, obs_single) / self.config.num_envs
-                    if nMAE_avg > max_nMAE_metric:
-                        max_nMAE_metric = nMAE_avg
-                        print("nMAE max: ", max_nMAE_metric)
+                        obs_single = [_[i][2] for _ in obs][: len(ref_signal)]
+                        nMAE_avg += (
+                            utils_metrics.nMAE(ref_signal, obs_single)
+                            / self.config.num_envs
+                        )
+                    if nMAE_avg < min_nMAE_metric:
+                        min_nMAE_metric = nMAE_avg
+                        print("nMAE min: ", min_nMAE_metric)
 
             # bootstrap value if not done
             with torch.no_grad():
@@ -345,7 +348,6 @@ class Agent(nn.Module):
 
                     entropy_loss = entropy.mean()
                     loss = (
-
                         pg_loss
                         - self.config.ent_coef * entropy_loss
                         + v_loss * self.config.vf_coef
@@ -389,4 +391,4 @@ class Agent(nn.Module):
 
         self.save()
         writer.close()
-        return max_nMAE_metric  
+        return min_nMAE_metric

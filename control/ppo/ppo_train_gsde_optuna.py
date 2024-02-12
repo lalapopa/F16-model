@@ -15,7 +15,7 @@ from utils import (
 def objective(trial):
     args.learning_rate = trial.suggest_float("lr", 1e-6, 5e-2, log=True)
     args.num_minibatches = trial.suggest_int("num-minibatches", 32, 512, step=32)
-    args.clip_coef = trial.suggest_float("lr", 0.01, 2, log=True)
+    args.clip_coef = trial.suggest_float("clip_coef", 0.01, 2, step=0.01)
 
     ENV_CONFIG = {
         "dt": 0.01,
@@ -47,10 +47,9 @@ def objective(trial):
 
 
 if __name__ == "__main__":
-
     args = parse_args()
 
-    study = optuna.create_study(direction="maximize")
+    study = optuna.create_study(direction="minimize")
     study.optimize(
         objective, n_trials=100, catch=(ValueError)
     )  # When None need to continue
