@@ -24,9 +24,9 @@ def objective(trial):
         "debug_state": False,
         "determenistic_ref": False,
         "T_aw": trial.suggest_float("T_aw", 0.01, 2),
-        "T_i": trial.suggest_float("T_aw", 0.01, 2),
+        "T_i": trial.suggest_float("T_i", 0.01, 2),
         "k_kp": trial.suggest_int("k_kp", 0, 1000, step=10),
-        "k_ki": trial.suggest_int("k_kp", 0, 1000, step=10),
+        "k_ki": trial.suggest_int("k_ki", 0, 1000, step=10),
     }
     envs = gym.vector.SyncVectorEnv(
         [make_env(args.seed + i, ENV_CONFIG) for i in range(args.num_envs)]

@@ -108,6 +108,7 @@ class Agent(nn.Module):
             self.gsde_logstd, f"{self.config.save_dir}/{self.run_name}/gsde_logstd"
         )
         torch.save(self.gsde_mean, f"{self.config.save_dir}/{self.run_name}/gsde_mean")
+        print(f"Saving model in: {self.config.save_dir}/{self.run_name}")
 
     def load(self, path_name):
         self.actor_logstd = torch.load(
@@ -235,6 +236,7 @@ class Agent(nn.Module):
                     if nMAE_avg < min_nMAE_metric:
                         min_nMAE_metric = nMAE_avg
                         print("nMAE min: ", min_nMAE_metric)
+                    print(f"nMAE {nMAE_avg}", nMAE_avg)
 
             # bootstrap value if not done
             with torch.no_grad():

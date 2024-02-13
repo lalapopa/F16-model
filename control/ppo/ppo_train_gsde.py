@@ -28,6 +28,10 @@ if __name__ == "__main__":
         "norm_state": True,
         "debug_state": False,
         "determenistic_ref": False,
+        "T_aw": 1.68,
+        "T_i": 1.68,
+        "k_kp": 20,
+        "k_ki": 20,
     }
     args = parse_args()
 

@@ -3,36 +3,31 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 
 
-def result(x_array, u_array, time, plot_name=None, ref_signal=None, cut_index=None):
+def result(
+    x_array, u_array, time, plot_name=None, ref_signal=None, reward=None, cut_index=None
+):
     cut_index = _get_cut_index(cut_index)
-    plt.subplot(5, 1, 1)
+
+    max_plots = 7
+
+    plt.subplot(max_plots, 1, 1)
     plt.plot(time[cut_index:], np.degrees([i for i in u_array])[cut_index:], "-r")
     plt.grid()
     plt.ylabel(r"$\varphi$, deg")
-    #    plt.subplot(6, 1, 2)
-    #    plt.plot(time, [i[1] for i in u_array], "-r")
-    #    plt.grid()
-    #    plt.xlim(time[0], time[-1])
-    #    plt.ylabel(r"$P$")
 
-    plt.subplot(5, 1, 2)
+    plt.subplot(max_plots, 1, 2)
     plt.plot(time[cut_index:], np.degrees([i[1] for i in x_array])[cut_index:], "-b")
     plt.grid()
     plt.ylabel(r"$\omega_{z}$, deg/sec")
 
-    plt.subplot(5, 1, 3)
+    plt.subplot(max_plots, 1, 3)
     plt.plot(
         time[cut_index:],
         np.degrees([i[2] for i in x_array])[cut_index:],
         "-b",
         label=r"$\vartheta$",
     )
-    #     plt.plot(
-    #         time[cut_index:],
-    #         np.degrees([i[3] for i in x_array])[cut_index:],
-    #         "--m",
-    #         label=r"$\alpha$",
-    #     )
+
     if ref_signal is not None:
         plt.plot(
             time[cut_index:],
@@ -42,31 +37,35 @@ def result(x_array, u_array, time, plot_name=None, ref_signal=None, cut_index=No
         )
     plt.legend()
     plt.grid()
-    plt.ylabel(r"$\vartheta\, deg")
+    plt.ylabel(r"$\vartheta \, deg$")
 
-    #    plt.subplot(6, 1, 5)
-    #    plt.plot(time, [i[3] for i in x_array], "-b")
-    #    if ref_signal is not None:
-    #        ref_speed = x_array[0][3]
-    #        plt.plot(time, [ref_speed for i in time], ":")
-    #    plt.ylabel("$V$, m/s")
-    #    plt.grid()
-    #    plt.xlim(time[0], time[-1])
-    #    plt.xlabel("t, sec")
-    plt.subplot(5, 1, 4)
+    plt.subplot(max_plots, 1, 4)
     plt.plot(
         time[cut_index:],
         np.degrees([i[3] for i in x_array][cut_index:])
         - np.degrees([i[2] for i in x_array][cut_index:]),
         "-b",
-        label=r"$\theta_{err}$",
+        label=r"$\vartheta_{err}$",
     )
 
     plt.ylabel(r"Reward specific signals")
     plt.legend()
     plt.grid()
 
-    plt.subplot(5, 1, 5)
+    plt.subplot(max_plots, 1, 5)
+    plt.plot(time[cut_index:], reward[cut_index:], "-b")
+    plt.ylabel(r"Reward")
+    plt.grid()
+
+    plt.subplot(max_plots, 1, 6)
+    plt.plot(time[cut_index:], [i[-1] for i in x_array][cut_index:], "--g", label=r"$\varphi_I$")
+    plt.plot(time[cut_index:], [i[-2] for i in x_array][cut_index:], "--b", label=r"$\varphi_P$")
+    plt.legend()
+    plt.ylabel("Action parts")
+    plt.grid()
+
+
+    plt.subplot(max_plots, 1, 7)
     plt.plot(time[cut_index:], [i[0] for i in x_array][cut_index:], "-b")
     plt.ylabel("$H$, m")
     plt.grid()

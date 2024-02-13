@@ -11,7 +11,8 @@ from utils import parse_args
 from ppo_train_gsde import make_env
 from ppo_model_gsde import Agent
 
-model_name = "runs/1_testa/F16__1__1707590905__fa08"
+model_name = "runs/optuna_iasa/F16__1__1707767576__308f"
+
 
 CONST_STEP = True
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -21,10 +22,10 @@ ENV_CONFIG = {
     "norm_state": True,
     "debug_state": False,
     "determenistic_ref": False,
-    "T_aw": 0.01,
-    "T_i": 0.1,
-    "k_kp": 2,
-    "k_ki": 1,
+    "T_aw": 1.68,
+    "T_i": 1.68,
+    "k_kp": 20,
+    "k_ki": 20,
 }
 
 
@@ -34,6 +35,7 @@ def run_sim():
     # args.seed = 176
     # args.seed = 790
     # args.seed = 289  # 7619 -18 reward OMG
+    # args.seed = 882
     args.seed = random.randint(1, 999)
     print(f"Run with seed = {args.seed}")
     envs = gym.vector.SyncVectorEnv(
@@ -88,5 +90,5 @@ if __name__ == "__main__":
     states, actions, ref_signal, r, t = run_sim()
     print(f"total reward {sum(r)}")
     print(f"nMAE: { utils_metrics.nMAE(ref_signal, [i[2] for i in states])}")
-    utils_plots.result(states, actions, t, ref_signal=ref_signal)
-    utils_plots.algo(r, t)
+    utils_plots.result(states, actions, t, ref_signal=ref_signal, reward=r)
+#   utils_plots.algo(r, t)

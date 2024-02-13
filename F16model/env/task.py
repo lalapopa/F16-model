@@ -27,7 +27,7 @@ class ReferenceSignal:
         self.theta_ref += A_theta * self.cosstep(self.tn * 0.75, 1)
         self.theta_ref = self.theta_ref[
             ::-1
-        ]  # Flip ref signal for zero in first 2 second to prevent tilt in begining
+        ]  # Flip ref signal for zero in first 2 second to prevent Agent tilt in begining
 
     def cosstep(self, start_time, w):
         """

@@ -88,17 +88,21 @@ class F16(gym.Env):
     def compute_reward(self, state):
         tracking_ref = (self.ref_signal.theta_ref[self.episode_length],)
         tracking_err = np.sqrt(np.abs(tracking_ref - state.theta) / np.radians(50))
-        tracking_reward = (1 - 0.99) * - tracking_err
-        P_reward = (1 - 0.99) * -(np.sqrt( np.abs (self.action_P)))
-        I_reward = (1 - 0.99) * -(np.sqrt( np.abs (self.action_I)))
+        tracking_reward = (1 - 0.99) * -tracking_err
+        P_reward = (1 - 0.99) * -(np.sqrt(np.abs(self.action_P)))
+        I_reward = (1 - 0.99) * -(np.sqrt(np.abs(self.action_I)))
         k_P = self.config["k_kp"] * np.exp(-0.5 * self.clock)
         k_I = self.config["k_ki"] * np.exp(-0.25 * self.clock)
+        # k_P = self.config["k_kp"]
+        # k_I = self.config["k_ki"] 
         reward = (tracking_reward + k_P * P_reward + k_I * I_reward).sum()
         return reward
 
     def integral_action_state_augmentation(self, action_pi):
-        self.action_I += self.config["T_aw"] * ( np.clip(action_pi[1], a_min=-1, a_max=1) - action_pi[1])
-        self.action_P = action_pi[0] 
+        self.action_I += self.config["T_aw"] * (
+            np.clip(action_pi[1], a_min=-1, a_max=1) - action_pi[1]
+        )
+        self.action_P = action_pi[0]
         action = np.array([self.action_P + self.config["T_i"] * self.action_I])
         return action
 
@@ -119,9 +123,11 @@ class F16(gym.Env):
         state_short = list(state_short.values())
         state_short = F16.normalize(state_short)  # Always output normalized states
         state_short.append(self.ref_signal.theta_ref[self.episode_length])
-        state_short.append(0.5 *(self.ref_signal.theta_ref[self.episode_length] - state.theta))
-        state_short.append(self.action_I)
+        state_short.append(
+            0.5 * (self.ref_signal.theta_ref[self.episode_length] - state.theta)
+        )
         state_short.append(self.action_P)
+        state_short.append(self.action_I)
         return np.array(state_short)
 
     def check_state(self, state):
@@ -223,7 +229,7 @@ def get_random_state():
 
 
 def get_trimmed_state_control():
-    """Short cut insted of calculating from trim_app.py"""
+    """Shortcut insted of calculating from trim_app.py"""
     u_trimmed = Control(
         np.radians(-4.3674), 0.3767
     )  # Trimmed values for V = 200 m/s, H = 3000 m
