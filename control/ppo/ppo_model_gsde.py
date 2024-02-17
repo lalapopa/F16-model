@@ -30,6 +30,7 @@ class Agent(nn.Module):
         self.config = config
         self._setup_seed()
         device = self._get_device()
+        self.env = env
         self.action_shape = np.array(env.single_action_space.shape).prod()
         self.obs_shape = np.array(env.single_observation_space.shape).prod()
         self.critic = nn.Sequential(
@@ -45,19 +46,21 @@ class Agent(nn.Module):
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, self.action_shape), std=0.01),
-        ).to(
-            device
-        )  # aka Policy
+        ).to(device)  # aka Policy
         self.actor_logstd = nn.Parameter(
-            torch.zeros(1, self.action_shape), requires_grad=True
+            torch.zeros(1, self.action_shape)
         ).to(device)
-        self.gsde_mean = layer_init(
-            nn.Linear(self.obs_shape, self.action_shape).to(device)
-        )
+
+        self.gsde_mean = nn.Sequential(
+            layer_init(nn.Linear(self.obs_shape, 64)),
+            nn.Tanh(),
+            layer_init(nn.Linear(64, 64)),
+            nn.Tanh(),
+            layer_init(nn.Linear(64, self.action_shape), std=0.1),
+        ).to(device)  
         self.gsde_logstd = nn.Parameter(
-            torch.zeros(1, self.action_shape), requires_grad=True
+            torch.zeros(1, self.action_shape)
         ).to(device)
-        self.env = env
 
     def get_value(self, x):
         return self.critic(x)
@@ -236,7 +239,7 @@ class Agent(nn.Module):
                     if nMAE_avg < min_nMAE_metric:
                         min_nMAE_metric = nMAE_avg
                         print("nMAE min: ", min_nMAE_metric)
-                    print(f"nMAE {nMAE_avg}", nMAE_avg)
+                    print(f"nMAE {nMAE_avg}")
 
             # bootstrap value if not done
             with torch.no_grad():

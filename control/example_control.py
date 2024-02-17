@@ -1,5 +1,4 @@
 import numpy as np
-import random
 
 from F16model.env import F16, get_trimmed_state_control
 import F16model.utils.plots as utils_plots
@@ -12,10 +11,14 @@ ENV_CONFIG = {
     "norm_state": True,
     "debug_state": False,
     "determenistic_ref": False,
+    "T_aw": 1.68,
+    "T_i": 1.68,
+    "k_kp": 20,
+    "k_ki": 20,
 }
 
 
-def run_sim(x0, u0, max_episode=2000):
+def run_sim(u0):
     env = F16(ENV_CONFIG)
     env.reset()
     t0 = 0
@@ -38,25 +41,25 @@ def run_sim(x0, u0, max_episode=2000):
     rewards = []
     times = []
     ref_signal = env.ref_signal.theta_ref[:-1]
+
     for i, _ in enumerate(t):
         action = np.array([stab_act[i], throttle_act[i]])
         state, reward, done, _, info = env.step(action)
-        if state.all():
-            states.append(state)
-            rewards.append(reward)
-            actions.append(action[0])
-            times.append(info["clock"])
         if done:
             states = states[:i]
             actions = actions[:i]
             times = times[:i]
             ref_signal = ref_signal[:i]
             break
-    return states, actions, sum(rewards), times, ref_signal
+        states.append(F16.denormalize(state))
+        rewards.append(reward)
+        actions.append(action[0])
+        times.append(info["clock"])
+    return states, actions, rewards, times, ref_signal
 
 
 if __name__ == "__main__":
-    x0, u0 = get_trimmed_state_control()
-    states, actions, r, t, ref = run_sim(x0, u0)
-    print(f"total reward {r}")
-    utils_plots.result(states, actions, t, ref_signal=ref)
+    _, u0 = get_trimmed_state_control()
+    states, actions, r, t, ref = run_sim(u0)
+    print(f"Total reward {sum(r)}")
+    utils_plots.result(states, actions, t, ref_signal=ref, reward=r)

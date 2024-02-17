@@ -88,22 +88,24 @@ class F16(gym.Env):
     def compute_reward(self, state):
         tracking_ref = (self.ref_signal.theta_ref[self.episode_length],)
         tracking_err = np.sqrt(np.abs(tracking_ref - state.theta) / np.radians(50))
-        tracking_reward = (1 - 0.99) * -tracking_err
-        P_reward = (1 - 0.99) * -(np.sqrt(np.abs(self.action_P)))
-        I_reward = (1 - 0.99) * -(np.sqrt(np.abs(self.action_I)))
-        k_P = self.config["k_kp"] * np.exp(-0.5 * self.clock)
-        k_I = self.config["k_ki"] * np.exp(-0.25 * self.clock)
-        # k_P = self.config["k_kp"]
-        # k_I = self.config["k_ki"] 
+        tracking_reward = (1 - 0.95) * -tracking_err
+        P_reward = (1 - 0.95) * -(np.sqrt(np.abs(self.action_P)))
+        I_reward = (1 - 0.95) * -(np.sqrt(np.abs(self.action_I)))
+#        k_P = self.config["k_kp"] * np.exp(-0.5 * self.clock)
+#        k_I = self.config["k_ki"] * np.exp(-0.25 * self.clock) # FUCK TIME DEPENDENT REWARD WTF
+        k_P = self.config["k_kp"]
+        k_I = self.config["k_ki"] 
         reward = (tracking_reward + k_P * P_reward + k_I * I_reward).sum()
         return reward
 
     def integral_action_state_augmentation(self, action_pi):
+        # TODO: Clipping only reducing action_I
+        action = np.array([self.action_P + self.config["T_i"] * self.action_I])
         self.action_I += self.config["T_aw"] * (
             np.clip(action_pi[1], a_min=-1, a_max=1) - action_pi[1]
         )
         self.action_P = action_pi[0]
-        action = np.array([self.action_P + self.config["T_i"] * self.action_I])
+
         return action
 
     def state_transform(self, state):

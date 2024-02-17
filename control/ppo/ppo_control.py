@@ -11,7 +11,7 @@ from utils import parse_args
 from ppo_train_gsde import make_env
 from ppo_model_gsde import Agent
 
-model_name = "runs/optuna_iasa/F16__1__1707767576__308f"
+model_name = "runs/1_iata/F16__1__1708022781__30c0"
 
 
 CONST_STEP = True
@@ -22,8 +22,8 @@ ENV_CONFIG = {
     "norm_state": True,
     "debug_state": False,
     "determenistic_ref": False,
-    "T_aw": 1.68,
-    "T_i": 1.68,
+    "T_aw": 0.01,
+    "T_i": 0.01,
     "k_kp": 20,
     "k_ki": 20,
 }
@@ -66,13 +66,11 @@ def run_sim():
         if done:
             print(f"Done by done flag!")
             break
-        states.append(state[0])
+        states.append(F16.denormalize(state[0]))
+        actions.append(F16.rescale_action(action[0]))
         rewards.append(reward[0])
-        actions.append(action[0])
         clock.append(info["clock"][0])
 
-    states = list(map(F16.denormalize, states))
-    actions = list(map(F16.rescale_action, actions))
     cut_index = len(states)
     print("after denorm")
     print(cut_index)

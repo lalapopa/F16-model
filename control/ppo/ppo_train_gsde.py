@@ -28,10 +28,10 @@ if __name__ == "__main__":
         "norm_state": True,
         "debug_state": False,
         "determenistic_ref": False,
-        "T_aw": 1.68,
-        "T_i": 1.68,
-        "k_kp": 20,
-        "k_ki": 20,
+        "T_aw": 0.005,
+        "T_i": 0.01,
+        "k_kp": 1.75,
+        "k_ki": 1.25,
     }
     args = parse_args()
 
@@ -44,6 +44,11 @@ if __name__ == "__main__":
         os.path.abspath(__file__).replace("train", "model"),
         f"{args.save_dir}/{run_name}/{os.path.basename(__file__).replace('train', 'model')}",
     )  # stupid as shit
+    write_python_file(
+        "F16model/env/env.py",
+        f"{args.save_dir}/{run_name}/env.py",
+    )
+
     envs = gym.vector.SyncVectorEnv(
         [make_env(args.seed + i, ENV_CONFIG) for i in range(args.num_envs)]
     )
