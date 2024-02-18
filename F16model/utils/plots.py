@@ -58,12 +58,15 @@ def result(
     plt.grid()
 
     plt.subplot(max_plots, 1, 6)
-    plt.plot(time[cut_index:], [i[-1] for i in x_array][cut_index:], "--g", label=r"$\varphi_I$")
-    plt.plot(time[cut_index:], [i[-2] for i in x_array][cut_index:], "--b", label=r"$\varphi_P$")
+    plt.plot(
+        time[cut_index:],
+        [i[-1] for i in x_array][cut_index:],
+        "--g",
+        label=r"$\vartheta_{I}$",
+    )
     plt.legend()
-    plt.ylabel("Action parts")
+    plt.ylabel("Integral part")
     plt.grid()
-
 
     plt.subplot(max_plots, 1, 7)
     plt.plot(time[cut_index:], [i[0] for i in x_array][cut_index:], "-b")

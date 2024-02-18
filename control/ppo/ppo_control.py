@@ -11,8 +11,7 @@ from utils import parse_args
 from ppo_train_gsde import make_env
 from ppo_model_gsde import Agent
 
-model_name = "runs/1_iata/F16__1__1708022781__30c0"
-
+model_name = "runs/1_iata/F16__1__1708268316__5bcb"
 
 CONST_STEP = True
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -23,9 +22,9 @@ ENV_CONFIG = {
     "debug_state": False,
     "determenistic_ref": False,
     "T_aw": 0.01,
-    "T_i": 0.01,
-    "k_kp": 20,
-    "k_ki": 20,
+    "T_i": 0.02,
+    "k_kp": 1.75,
+    "k_ki": 2.15,
 }
 
 
@@ -61,7 +60,7 @@ def run_sim():
     for i in range(0, 2048):
         state = torch.Tensor(state).to(device)
         action, _, _, _ = agent.get_action_and_value(state)
-        action = action.cpu().detach().numpy()
+        action = action.cpu().detach().numpy() / 25
         state, reward, done, _, info = agent.env.step(action)
         if done:
             print(f"Done by done flag!")

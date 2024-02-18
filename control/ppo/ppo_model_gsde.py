@@ -38,17 +38,21 @@ class Agent(nn.Module):
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
-            layer_init(nn.Linear(64, 1), std=1.0),
+            layer_init(nn.Linear(64, 1), std=0.1),
         ).to(device)
         self.actor_mean = nn.Sequential(
             layer_init(nn.Linear(self.obs_shape, 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
-            layer_init(nn.Linear(64, self.action_shape), std=0.01),
-        ).to(device)  # aka Policy
-        self.actor_logstd = nn.Parameter(
-            torch.zeros(1, self.action_shape)
+            layer_init(nn.Linear(64, self.action_shape), std=0.001),
+            #            nn.Tanh(),
+        ).to(
+            device
+        )  # aka Policy
+        self.actor_logstd = nn.Sequential(
+            layer_init(nn.Linear(1, self.action_shape), std=0.01),
+            nn.Tanh(),
         ).to(device)
 
         self.gsde_mean = nn.Sequential(
@@ -56,11 +60,9 @@ class Agent(nn.Module):
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
-            layer_init(nn.Linear(64, self.action_shape), std=0.1),
-        ).to(device)  
-        self.gsde_logstd = nn.Parameter(
-            torch.zeros(1, self.action_shape)
+            layer_init(nn.Linear(64, self.action_shape), std=0.001),
         ).to(device)
+        self.gsde_logstd = nn.Parameter(torch.zeros(1, self.action_shape)).to(device)
 
     def get_value(self, x):
         return self.critic(x)
@@ -71,27 +73,22 @@ class Agent(nn.Module):
         self.theta_gsde = Normal(0, gsde_std).rsample()
 
     def get_action_and_value(self, x, action=None, learn_feature=False):
-        action_mean_pi = (
+        action_mean = (
             self.actor_mean(x) if learn_feature else self.actor_mean(x).detach()
         )
-        action_std_pi = torch.exp(self.actor_logstd.expand_as(action_mean_pi))
-        probs_pi = Normal(action_mean_pi, action_std_pi)
+        action_std = torch.exp(self.actor_logstd(action_mean))
+        probs = Normal(action_mean, action_std)
 
         if action is None:
-            noise = self.theta_gsde * action_std_pi
-            action_p = probs_pi.mean[:, 0] + noise[:, 0]
-            action_i = probs_pi.mean[:, 1] + noise[:, 1]
-            action = torch.transpose(torch.stack((action_p, action_i)), 0, 1)
-
+            noise = self.theta_gsde * action_std
+            action = probs.mean + noise
         log_prob = (
-            probs_pi.log_prob(action)
-            if learn_feature
-            else probs_pi.log_prob(action.detach())
+            probs.log_prob(action) if learn_feature else probs.log_prob(action.detach())
         )
         return (
             action,
             log_prob.sum(1),
-            probs_pi.entropy().sum(1),
+            probs.entropy().sum(1),
             self.critic(x),
         )
 
@@ -232,13 +229,11 @@ class Agent(nn.Module):
                     for i in range(self.config.num_envs):
                         ref_signal = self.env.call("ref_signal")[i].theta_ref[:-1]
                         obs_single = [_[i][2] for _ in obs][: len(ref_signal)]
-                        nMAE_avg += (
-                            utils_metrics.nMAE(ref_signal, obs_single)
-                            / self.config.num_envs
-                        )
+                        nMAE_episode = utils_metrics.nMAE(ref_signal, obs_single)
+                        nMAE_avg += ( nMAE_episode / self.config.num_envs)
+                        print(f"nMAE #{i}: {nMAE_episode} ")
                     if nMAE_avg < min_nMAE_metric:
                         min_nMAE_metric = nMAE_avg
-                        print("nMAE min: ", min_nMAE_metric)
                     print(f"nMAE {nMAE_avg}")
 
             # bootstrap value if not done
