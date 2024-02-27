@@ -38,29 +38,25 @@ class Agent(nn.Module):
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
-            layer_init(nn.Linear(64, 1), std=0.1),
+            layer_init(nn.Linear(64, 1), std=1.0),
         ).to(device)
         self.actor_mean = nn.Sequential(
             layer_init(nn.Linear(self.obs_shape, 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
-            layer_init(nn.Linear(64, self.action_shape), std=0.001),
-            #            nn.Tanh(),
+            layer_init(nn.Linear(64, self.action_shape), std=0.01),
         ).to(
             device
         )  # aka Policy
-        self.actor_logstd = nn.Sequential(
-            layer_init(nn.Linear(1, self.action_shape), std=0.01),
-            nn.Tanh(),
-        ).to(device)
+        self.actor_logstd = nn.Parameter(torch.zeros(1, self.action_shape)).to(device)
 
         self.gsde_mean = nn.Sequential(
             layer_init(nn.Linear(self.obs_shape, 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
-            layer_init(nn.Linear(64, self.action_shape), std=0.001),
+            layer_init(nn.Linear(64, self.action_shape), std=0.01),
         ).to(device)
         self.gsde_logstd = nn.Parameter(torch.zeros(1, self.action_shape)).to(device)
 
@@ -76,7 +72,7 @@ class Agent(nn.Module):
         action_mean = (
             self.actor_mean(x) if learn_feature else self.actor_mean(x).detach()
         )
-        action_std = torch.exp(self.actor_logstd(action_mean))
+        action_std = torch.exp(self.actor_logstd.expand_as(action_mean))
         probs = Normal(action_mean, action_std)
 
         if action is None:
@@ -388,7 +384,7 @@ class Agent(nn.Module):
             if round(global_step, -3) % 10000 == 0:
                 print(f"Saving model after {global_step}")
                 self.save()
-
+        print(f"Saving model after {global_step}")
         self.save()
         writer.close()
         return min_nMAE_metric

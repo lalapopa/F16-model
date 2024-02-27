@@ -25,13 +25,8 @@ if __name__ == "__main__":
     ENV_CONFIG = {
         "dt": 0.01,
         "tn": 10,
-        "norm_state": True,
         "debug_state": False,
         "determenistic_ref": False,
-        "T_aw": 0.01,
-        "T_i": 0.02,
-        "k_kp": 1.75,
-        "k_ki": 2.75,
     }
     args = parse_args()
 

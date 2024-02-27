@@ -4,7 +4,7 @@ import time
 from stable_baselines3 import SAC, PPO
 from stable_baselines3.common.env_util import make_vec_env
 
-from utils import parse_args, write_python_file
+from control.ppo.utils import parse_args, write_python_file
 from F16model.env import F16
 
 ENV_CONFIG = {
@@ -22,7 +22,7 @@ def env_wrapper():
 
 
 args = parse_args()
-run_name = f"F16__{args.exp_name}__sb__{args.seed}__{str(int(time.time()))}_{('%032x' % random.getrandbits(128))[:4]}"
+run_name = f"F16__sb__{args.seed}__{str(int(time.time()))}_{('%032x' % random.getrandbits(128))[:4]}"
 write_python_file(
     os.path.abspath(__file__), f"runs/{run_name}/{os.path.basename(__file__)}"
 )
@@ -36,5 +36,5 @@ model = PPO(
     seed=3,
     use_sde=True,
 )
-model.learn(total_timesteps=1000000)
+model.learn(total_timesteps=200000)
 model.save(f"runs/models/{run_name}")

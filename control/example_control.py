@@ -4,17 +4,13 @@ from F16model.env import F16, get_trimmed_state_control
 import F16model.utils.plots as utils_plots
 import F16model.utils.control as utils_control
 
-CONST_STEP = False
+CONST_STEP = True
 ENV_CONFIG = {
     "dt": 0.01,
     "tn": 10,
     "norm_state": True,
     "debug_state": False,
     "determenistic_ref": False,
-    "T_aw": 1.68,
-    "T_i": 1.68,
-    "k_kp": 20,
-    "k_ki": 20,
 }
 
 
@@ -28,7 +24,7 @@ def run_sim(u0):
 
     # Control Define
     if CONST_STEP:
-        stab_act = utils_control.step_function(t0, dt, tn, 0, 0, bias=u0[0])
+        stab_act = utils_control.step_function(t0, dt, tn, 2, np.radians(5), bias=u0[0])
         throttle_act = utils_control.step_function(t0, dt, tn, 0, 0, bias=u0[1])
     else:
         stab_act = utils_control.make_step_series(

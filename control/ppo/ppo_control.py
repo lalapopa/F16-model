@@ -11,7 +11,8 @@ from utils import parse_args
 from ppo_train_gsde import make_env
 from ppo_model_gsde import Agent
 
-model_name = "runs/1_iata/F16__1__1708268316__5bcb"
+model_name = "runs/old_reward/F16__1__1708980555__f10b"
+
 
 CONST_STEP = True
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -21,20 +22,13 @@ ENV_CONFIG = {
     "norm_state": True,
     "debug_state": False,
     "determenistic_ref": False,
-    "T_aw": 0.01,
-    "T_i": 0.02,
-    "k_kp": 1.75,
-    "k_ki": 2.15,
 }
 
 
 def run_sim():
     args = parse_args()
-    #  args.seed = 397
-    # args.seed = 176
-    # args.seed = 790
     # args.seed = 289  # 7619 -18 reward OMG
-    # args.seed = 882
+    # args.seed = 251
     args.seed = random.randint(1, 999)
     print(f"Run with seed = {args.seed}")
     envs = gym.vector.SyncVectorEnv(
@@ -57,23 +51,25 @@ def run_sim():
     print(
         f"INIT THETA {np.degrees(F16.denormalize(state[0])[2])} | REF THETA {np.degrees(ref_signal[15])}"
     )
-    for i in range(0, 2048):
+    for _ in range(0, 2048):
         state = torch.Tensor(state).to(device)
         action, _, _, _ = agent.get_action_and_value(state)
-        action = action.cpu().detach().numpy() / 25
+        action = action.cpu().detach().numpy()
         state, reward, done, _, info = agent.env.step(action)
-        if done:
-            print(f"Done by done flag!")
-            break
-        states.append(F16.denormalize(state[0]))
+
         actions.append(F16.rescale_action(action[0]))
         rewards.append(reward[0])
-        clock.append(info["clock"][0])
-
-    cut_index = len(states)
-    print("after denorm")
-    print(cut_index)
-
+        if done:
+            clock.append(info["final_info"][0]["clock"])
+            states.append(F16.denormalize(info["final_observation"][0]))
+            break
+        else:
+            clock.append(info["clock"][0])
+            states.append(F16.denormalize(state[0]))
+    if len(ref_signal) < len(states):
+        cut_index = len(ref_signal)
+    else:
+        cut_index = len(states)
     return (
         states[:cut_index],
         actions[:cut_index],

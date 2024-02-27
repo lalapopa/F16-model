@@ -8,7 +8,7 @@ def result(
 ):
     cut_index = _get_cut_index(cut_index)
 
-    max_plots = 7
+    max_plots = 6
 
     plt.subplot(max_plots, 1, 1)
     plt.plot(time[cut_index:], np.degrees([i for i in u_array])[cut_index:], "-r")
@@ -40,6 +40,11 @@ def result(
     plt.ylabel(r"$\vartheta \, deg$")
 
     plt.subplot(max_plots, 1, 4)
+    print('='*10)
+    print("FROM STATE ref:", np.degrees([i[3] for i in x_array][cut_index:])[800] ) 
+    print("FROM STATE theta", np.degrees([i[2] for i in x_array][cut_index:])[800] ) 
+    print("FROM REF ref:", np.array(np.degrees(ref_signal)[cut_index:])[800])
+    print('='*10)
     plt.plot(
         time[cut_index:],
         np.degrees([i[3] for i in x_array][cut_index:])
@@ -48,7 +53,7 @@ def result(
         label=r"$\vartheta_{err}$",
     )
 
-    plt.ylabel(r"Reward specific signals")
+    plt.ylabel(r"Reward signal")
     plt.legend()
     plt.grid()
 
@@ -57,18 +62,18 @@ def result(
     plt.ylabel(r"Reward")
     plt.grid()
 
-    plt.subplot(max_plots, 1, 6)
-    plt.plot(
-        time[cut_index:],
-        [i[-1] for i in x_array][cut_index:],
-        "--g",
-        label=r"$\vartheta_{I}$",
-    )
-    plt.legend()
-    plt.ylabel("Integral part")
-    plt.grid()
+    # plt.subplot(max_plots, 1, 6)
+    # plt.plot(
+    #     time[cut_index:],
+    #     [i[-1] for i in x_array][cut_index:],
+    #     "--g",
+    #     label=r"$\vartheta_{I}$",
+    # )
+    # plt.legend()
+    # plt.ylabel("Integral part")
+    # plt.grid()
 
-    plt.subplot(max_plots, 1, 7)
+    plt.subplot(max_plots, 1, 6)
     plt.plot(time[cut_index:], [i[0] for i in x_array][cut_index:], "-b")
     plt.ylabel("$H$, m")
     plt.grid()
