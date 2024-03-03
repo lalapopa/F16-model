@@ -176,8 +176,9 @@ def state_logger(run_name, action=None, init_state=None):
             f.write(str(list(action)) + "\n")
 
 
-def write_to_tensorboard(writer, info, global_step, args):
+def write_to_tensorboard(writer, info, global_step):
     total_rewards = 0
+    done_envs = []
     for item in info:
         if "final_info" in item:
             step_taken = 0
@@ -192,10 +193,11 @@ def write_to_tensorboard(writer, info, global_step, args):
                     log_rewards.append(ep_return)
                     log_length.append(ep_length)
                     step_taken += ep_length
+                    done_envs.append(idx)
             for i_step, i_reward, i_length in zip(
                 log_steps[::-1], log_rewards[::-1], log_length[::-1]
             ):
-                #                print(f"global_step={i_step}, episodic_return={i_reward}")
+                # print(f"global_step={i_step}, episodic_return={i_reward}")
                 total_rewards += i_reward
                 writer.add_scalar(
                     "charts/episodic_return",
@@ -211,7 +213,8 @@ def write_to_tensorboard(writer, info, global_step, args):
             print(
                 f"Step: {global_step} EPs: {len(log_rewards)} AVG episodes return: {avg_returns}"
             )
-            return avg_returns
+            return avg_returns, done_envs
+    return None, done_envs
 
 
 def write_python_file(filename, save_name):

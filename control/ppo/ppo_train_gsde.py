@@ -27,6 +27,7 @@ if __name__ == "__main__":
         "tn": 10,
         "debug_state": False,
         "determenistic_ref": False,
+        "scenario": None,
     }
     args = parse_args()
 

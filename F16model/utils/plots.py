@@ -41,19 +41,20 @@ def result(
 
     plt.subplot(max_plots, 1, 4)
     print('='*10)
-    print("FROM STATE ref:", np.degrees([i[3] for i in x_array][cut_index:])[800] ) 
+    print("FROM STATE theta_ref - theta:", np.degrees([2 * i[3] for i in x_array][cut_index:])[800] ) 
     print("FROM STATE theta", np.degrees([i[2] for i in x_array][cut_index:])[800] ) 
     print("FROM REF ref:", np.array(np.degrees(ref_signal)[cut_index:])[800])
     print('='*10)
-    plt.plot(
-        time[cut_index:],
-        np.degrees([i[3] for i in x_array][cut_index:])
-        - np.degrees([i[2] for i in x_array][cut_index:]),
-        "-b",
-        label=r"$\vartheta_{err}$",
-    )
+    plt.plot(time[cut_index:], 2 * np.degrees([i[3] for i in x_array][cut_index:]), "-b", label=r"$\vartheta_{err}$")
+    # plt.plot(
+    #     time[cut_index:],
+    #     np.degrees([i[3] for i in x_array][cut_index:])
+    #     - np.degrees([i[2] for i in x_array][cut_index:]),
+    #     "-b",
+    #     label=r"$\vartheta_{err}$",
+    # )
 
-    plt.ylabel(r"Reward signal")
+    plt.ylabel(r"Error")
     plt.legend()
     plt.grid()
 

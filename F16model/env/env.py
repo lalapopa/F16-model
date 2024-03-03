@@ -15,34 +15,17 @@ class F16(gym.Env):
     """
 
     def __init__(self, config):
-        self.dt = float(config["dt"])
-        self.tn = float(config["tn"])
-        if config["debug_state"]:
-            self.init_state = config["init_state"]
-        else:
-            try:
-                if isinstance(config["init_state"], np.ndarray) and isinstance(
-                    config["init_control"], np.ndarray
-                ):
-                    init_state = config["init_state"]
-                    init_control = config["init_control"]
-                    self.init_state = States(
-                        Ox=init_state[0],
-                        Oy=init_state[1],
-                        wz=init_state[2],
-                        theta=init_state[3],
-                        V=init_state[4],
-                        alpha=init_state[5],
-                        stab=init_control[0],
-                        dstab=np.radians(0),
-                        Pa=find_correct_thrust_position(init_control[1]),
-                    )
-            except KeyError:
-                self.init_state = get_random_state()
-        self.model = F16model(self.init_state, self.dt)
         self.config = config
+        self.dt = float(self.config["dt"])
+        self.tn = float(self.config["tn"])
+        self.init_state = self._get_init_state()
+
+        self.model = F16model(self.init_state, self.dt)
         self.ref_signal = ReferenceSignal(
-            0, self.dt, self.tn, config["determenistic_ref"]
+            self.dt,
+            self.tn,
+            determenistic=self.config["determenistic_ref"],
+            scenario=self.config["scenario"],
         )
         self._destroy()
         self.action_space = gym.spaces.Box(-1, 1, (1,), dtype=np.float32)
@@ -83,12 +66,14 @@ class F16(gym.Env):
         return out_state, reward, self.done, False, info
 
     def compute_reward(self, state):
-        tracking_ref = self.ref_signal.theta_ref[self.episode_length],
+        tracking_ref = (self.ref_signal.theta_ref[self.episode_length],)
         tracking_err = tracking_ref - state.theta
-        if np.sign(tracking_err) == 1: 
+        if np.sign(tracking_err) == 1:
             sign_coeff = 1
         elif np.sign(tracking_err) == -1:
             sign_coeff = 2
+        else:
+            sign_coeff = 1
 
         tracking_Q = np.array([1 / np.radians(30)])
         reward_vec = np.abs(
@@ -107,7 +92,7 @@ class F16(gym.Env):
         Oy
         wz
         theta
-        theta_ref
+#        theta_ref
         0.5 * (theta_ref - theta)
         """
         state_short = {
@@ -115,7 +100,7 @@ class F16(gym.Env):
         }  # take keys that defines in state_boundfrom `States` class
         state_short = list(state_short.values())
         state_short = F16.normalize(state_short)  # Always output normalized states
-        state_short.append(self.ref_signal.theta_ref[self.episode_length])
+#        state_short.append(self.ref_signal.theta_ref[self.episode_length])
         state_short.append(
             0.5 * (self.ref_signal.theta_ref[self.episode_length] - state.theta)
         )
@@ -161,15 +146,43 @@ class F16(gym.Env):
         if seed:
             random.seed(seed)
             np.random.seed(seed)
-        self.init_state = get_random_state()
+        self.init_state = self._get_init_state()
         self.model = F16model(self.init_state, self.dt)
         self.ref_signal = ReferenceSignal(
-            0, self.dt, self.tn, self.config["determenistic_ref"]
+            self.dt,
+            self.tn,
+            determenistic=self.config["determenistic_ref"],
+            scenario=self.config["scenario"],
         )
         self.init_state = self.model.reset()  # This line useless I guess
         self._destroy()
         out_state = self.state_transform(self.init_state)
         return out_state, {}
+
+    def _get_init_state(self):
+        if self.config["debug_state"]:
+            state = self.config["init_state"]
+        else:
+            try:
+                if isinstance(self.config["init_state"], np.ndarray) and isinstance(
+                    self.config["init_control"], np.ndarray
+                ):
+                    init_state = self.config["init_state"]
+                    init_control = self.config["init_control"]
+                    state = States(
+                        Ox=init_state[0],
+                        Oy=init_state[1],
+                        wz=init_state[2],
+                        theta=init_state[3],
+                        V=init_state[4],
+                        alpha=init_state[5],
+                        stab=init_control[0],
+                        dstab=np.radians(0),
+                        Pa=find_correct_thrust_position(init_control[1]),
+                    )
+            except KeyError:
+                state = get_random_state()
+        return state 
 
     def render(self):
         raise UserWarning("TODO: Implement this function")

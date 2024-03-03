@@ -4,22 +4,28 @@ import random
 
 
 class ReferenceSignal:
-    """Docstring for ReferenceSignal."""
+    """Class where reference signal is build"""
 
-    def __init__(self, t0, dt, tn, determenistic=False):
-        self.t0 = t0
+    def __init__(self, dt, tn, determenistic=False, scenario=None):
         self.dt = dt
         self.tn = tn
-        self.t = np.arange(self.t0, self.tn, self.dt)
-        self.theta_ref = np.ones(self.t.shape)
+        self.t = np.arange(0, self.tn, self.dt)
+        self.theta_ref = np.zeros(self.t.shape)
         self.determenistic = determenistic
-        self.get_reference_signal()
+        if scenario == None:
+            scenario = random.choice(["step", "cos", "pure_step"])
+        if scenario == "step":
+            self.get_step_reference_signal()
+        elif scenario == "cos":
+            self.get_cos_reference_signal()
+        elif scenario == "pure_step":
+            self.get_pure_step_reference_signal()
 
-    def get_reference_signal(self):
+    def get_step_reference_signal(self):
         if self.determenistic:
-            A_theta = 10 * np.pi / 180  # [rad]
+            A_theta = 20 * np.pi / 180  # [rad]
         else:
-            A_theta = np.radians(random.choice([20, 10, -10, -20]))
+            A_theta = np.radians(random.choice([20, 10, 5, -5, -10, -20]))
 
         self.theta_ref = A_theta * self.cosstep(-1, 2) * 2 - A_theta
         self.theta_ref -= A_theta * self.cosstep(self.tn * 0.25, 1)
@@ -28,6 +34,25 @@ class ReferenceSignal:
         self.theta_ref = self.theta_ref[
             ::-1
         ]  # Flip ref signal for zero in first 2 second to prevent Agent tilt in begining
+
+    def get_cos_reference_signal(self):
+        if self.determenistic:
+            A_theta = 10 * np.pi / 180  # [rad]
+            freq = 0.25
+        else:
+            A_theta = np.radians(random.choice([10, 5, -5, -10]))
+            freq = random.choice([0.125, 0.25, 0.45, 0.5])
+        self.theta_ref = np.sin(2 * np.pi * freq * self.t) * A_theta
+
+    def get_pure_step_reference_signal(self):
+        if self.determenistic:
+            amp = np.radians(10)
+            t_step = 1
+        else:
+            amp = np.radians(random.choice([20, 10, 5, -5, -10, -20]))
+            t_step = random.choice([1, 2, 3, 4])
+        t_step_idx = np.abs(self.t - t_step).argmin()
+        self.theta_ref[t_step_idx:] = amp
 
     def cosstep(self, start_time, w):
         """
@@ -46,6 +71,6 @@ class ReferenceSignal:
 
 
 if __name__ == "__main__":
-    ref_signal = ReferenceSignal(0, 0.01, 10)
+    ref_signal = ReferenceSignal(0.01, 10, determenistic=False, scenario="step")
     plt.plot(ref_signal.t, ref_signal.theta_ref)
     plt.show()

@@ -29,7 +29,7 @@ class Agent(nn.Module):
         super(Agent, self).__init__()
         self.config = config
         self._setup_seed()
-        device = self._get_device()
+        self.device = self._get_device()
         self.env = env
         self.action_shape = np.array(env.single_action_space.shape).prod()
         self.obs_shape = np.array(env.single_observation_space.shape).prod()
@@ -39,7 +39,7 @@ class Agent(nn.Module):
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 1), std=1.0),
-        ).to(device)
+        ).to(self.device)
         self.actor_mean = nn.Sequential(
             layer_init(nn.Linear(self.obs_shape, 64)),
             nn.Tanh(),
@@ -47,9 +47,11 @@ class Agent(nn.Module):
             nn.Tanh(),
             layer_init(nn.Linear(64, self.action_shape), std=0.01),
         ).to(
-            device
+            self.device
         )  # aka Policy
-        self.actor_logstd = nn.Parameter(torch.zeros(1, self.action_shape)).to(device)
+        self.actor_logstd = nn.Parameter(torch.zeros(1, self.action_shape)).to(
+            self.device
+        )
 
         self.gsde_mean = nn.Sequential(
             layer_init(nn.Linear(self.obs_shape, 64)),
@@ -57,16 +59,23 @@ class Agent(nn.Module):
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, self.action_shape), std=0.01),
-        ).to(device)
-        self.gsde_logstd = nn.Parameter(torch.zeros(1, self.action_shape)).to(device)
+        ).to(self.device)
+        self.gsde_logstd = nn.Parameter(torch.zeros(1, self.action_shape)).to(
+            self.device
+        )
 
     def get_value(self, x):
         return self.critic(x)
 
-    def sample_theta_gsde(self, x):
+    def sample_theta_gsde(self, x, sample_idx=[]):
         action_mean = self.gsde_mean(x)
         gsde_std = torch.exp(self.gsde_logstd.expand_as(action_mean))
-        self.theta_gsde = Normal(0, gsde_std).rsample()
+        theta_gsde_temp = Normal(0, gsde_std).rsample()
+        if sample_idx:
+            for idx_env in sample_idx:
+                self.theta_gsde[idx_env] = theta_gsde_temp[idx_env]
+        else:
+            self.theta_gsde = theta_gsde_temp
 
     def get_action_and_value(self, x, action=None, learn_feature=False):
         action_mean = (
@@ -145,48 +154,47 @@ class Agent(nn.Module):
             "cuda" if torch.cuda.is_available() and self.config.cuda else "cpu"
         )
 
+    def _init_episode_buffer(self):
+        obs = torch.zeros(
+            (self.config.num_steps, self.config.num_envs) + (self.obs_shape,),
+            dtype=torch.float32,
+        ).to(self.device)
+        actions = torch.zeros(
+            (self.config.num_steps, self.config.num_envs) + (self.action_shape,),
+            dtype=torch.float32,
+        ).to(self.device)
+        logprobs = torch.zeros(
+            (self.config.num_steps, self.config.num_envs), dtype=torch.float32
+        ).to(self.device)
+        rewards = torch.zeros(
+            (self.config.num_steps, self.config.num_envs), dtype=torch.float32
+        ).to(self.device)
+        dones = torch.zeros(
+            (self.config.num_steps, self.config.num_envs), dtype=torch.float32
+        ).to(self.device)
+        values = torch.zeros(
+            (self.config.num_steps, self.config.num_envs), dtype=torch.float32
+        ).to(self.device)
+        return obs, actions, logprobs, rewards, dones, values
+
     def train(self, run_name):
         self.run_name = run_name
         print(f"Start running: {self.run_name}")
         writer = self._setup_tb_log()
-        device = self._get_device()
-        print(f"Traninig using {device}")
+        print(f"Traninig using {self.device}")
 
         weight_histograms(writer, 0, self.actor_mean)
         optimizer = optim.Adam(
             self.parameters(), lr=self.config.learning_rate, amsgrad=True
         )
 
-        self.to(device)
-        obs = torch.zeros(
-            (self.config.num_steps, self.config.num_envs) + (self.obs_shape,),
-            dtype=torch.float32,
-        ).to(device)
-        actions = torch.zeros(
-            (self.config.num_steps, self.config.num_envs) + (self.action_shape,),
-            dtype=torch.float32,
-        ).to(device)
-        logprobs = torch.zeros(
-            (self.config.num_steps, self.config.num_envs), dtype=torch.float32
-        ).to(device)
-        rewards = torch.zeros(
-            (self.config.num_steps, self.config.num_envs), dtype=torch.float32
-        ).to(device)
-        dones = torch.zeros(
-            (self.config.num_steps, self.config.num_envs), dtype=torch.float32
-        ).to(device)
-        values = torch.zeros(
-            (self.config.num_steps, self.config.num_envs), dtype=torch.float32
-        ).to(device)
+        self.to(self.device)
 
         global_step = 0
         start_time = time.time()
-        obs_init, _ = self.env.reset(seed=self.config.seed)
         min_nMAE_metric = np.inf
-
-        next_obs = torch.Tensor(obs_init).to(device)
-        next_done = torch.zeros(self.config.num_envs).to(device)
         num_updates = self.config.total_timesteps // self.config.batch_size
+
         for update in range(1, num_updates + 1):
             state_logger(
                 self.run_name, init_state=self.env.call("init_state")[0].to_array()
@@ -197,8 +205,14 @@ class Agent(nn.Module):
                 lrnow = frac * self.config.learning_rate
                 optimizer.param_groups[0]["lr"] = lrnow
 
+            obs, actions, logprobs, rewards, dones, values = self._init_episode_buffer()
+            obs_init, _ = self.env.reset(seed=self.config.seed + update)
+            next_obs = torch.Tensor(obs_init).to(self.device)
+            next_done = torch.zeros(self.config.num_envs).to(self.device)
             with torch.no_grad():
                 self.sample_theta_gsde(next_obs)
+                init_gsde_state = next_obs
+            ref_signals = self.env.call("ref_signal")
             for step in range(0, self.config.num_steps):
                 global_step += 1 * self.config.num_envs
                 obs[step] = next_obs
@@ -210,33 +224,48 @@ class Agent(nn.Module):
                 logprobs[step] = logprob
                 state_logger(self.run_name, action=action.cpu().numpy()[0])
                 next_obs, reward, done, _, info = self.env.step(action.cpu().numpy())
-                rewards[step] = torch.tensor(reward).to(device).view(-1)
-                next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(
-                    done
-                ).to(device)
+                rewards[step] = torch.tensor(reward).to(self.device).view(-1)
+                next_obs, next_done = torch.Tensor(next_obs).to(
+                    self.device
+                ), torch.Tensor(done).to(self.device)
                 if done.all():
                     with torch.no_grad():
                         self.sample_theta_gsde(next_obs)
-                avg_return = write_to_tensorboard(
-                    writer, info, global_step, self.config
-                )
-                if avg_return:
-                    nMAE_avg = 0
-                    for i in range(self.config.num_envs):
-                        ref_signal = self.env.call("ref_signal")[i].theta_ref[:-1]
-                        obs_single = [_[i][2] for _ in obs][: len(ref_signal)]
-                        nMAE_episode = utils_metrics.nMAE(ref_signal, obs_single)
-                        nMAE_avg += ( nMAE_episode / self.config.num_envs)
-                        print(f"nMAE #{i}: {nMAE_episode} ")
-                    if nMAE_avg < min_nMAE_metric:
-                        min_nMAE_metric = nMAE_avg
-                    print(f"nMAE {nMAE_avg}")
+                    _, done_envs = write_to_tensorboard(writer, info, global_step)
+                elif done.any():  # ONLY for perfomance monitor & resample theta_gsde
+                    done_envs = []  # EXAMPLE: [0, 1, 2, 3] pick all paralel env
+                    _, done_envs = write_to_tensorboard(writer, info, global_step)
+                    if done_envs:
+                        for idx_done_env in done_envs:
+                            init_gsde_state[idx_done_env] = next_obs[idx_done_env]
+                        with torch.no_grad():
+                            self.sample_theta_gsde(
+                                init_gsde_state, sample_idx=done_envs
+                            )
+                        nMAE_avg = 0
+                        for idx_done_env in done_envs:
+                            single_ref_signal = ref_signals[idx_done_env].theta_ref
+                            obs_single = [_[idx_done_env][2] for _ in obs]
+                            nMAE_episode = utils_metrics.nMAE(
+                                single_ref_signal[
+                                    : info["final_info"][idx_done_env]["episode_length"]
+                                ],
+                                obs_single[
+                                    : info["final_info"][idx_done_env]["episode_length"]
+                                ],
+                            )
+                            nMAE_avg += nMAE_episode / self.config.num_envs
+                            print(f"MAE EP#{idx_done_env} {nMAE_episode}")
+                        if nMAE_avg < min_nMAE_metric:
+                            min_nMAE_metric = nMAE_avg
+                            print(f"NEW best nMAE {nMAE_avg}")
+                    ref_signals = self.env.call("ref_signal")
 
             # bootstrap value if not done
             with torch.no_grad():
                 next_value = self.get_value(next_obs).reshape(1, -1)
                 if self.config.gae:
-                    advantages = torch.zeros_like(rewards).to(device)
+                    advantages = torch.zeros_like(rewards).to(self.device)
                     lastgaelam = 0
                     for t in reversed(range(self.config.num_steps)):
                         if t == self.config.num_steps - 1:
@@ -259,7 +288,7 @@ class Agent(nn.Module):
                         )
                     returns = advantages + values
                 else:
-                    returns = torch.zeros_like(rewards).to(device)
+                    returns = torch.zeros_like(rewards).to(self.device)
                     for t in reversed(range(self.config.num_steps)):
                         if t == self.config.num_steps - 1:
                             nextnonterminal = 1.0 - next_done
