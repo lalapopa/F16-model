@@ -177,7 +177,7 @@ class F16(gym.Env):
                         V=init_state[4],
                         alpha=init_state[5],
                         stab=init_control[0],
-                        dstab=np.radians(0),
+                        dstab=0,
                         Pa=find_correct_thrust_position(init_control[1]),
                     )
             except KeyError:
@@ -228,7 +228,7 @@ def get_random_state():
         )[0],
         alpha=alpha_angle_random,
         stab=0,
-        dstab=0.0,
+        dstab=0,
         Pa=find_correct_thrust_position(0),
     )
 

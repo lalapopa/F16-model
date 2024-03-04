@@ -27,7 +27,7 @@ state_bound = {
 random_state_bound = {
     "Oy": [2000, 4000],
     "wz": [np.radians(-5), np.radians(5)],
-    "V": [90, 250],
+    "V": [200, 200],  # Freeze speed
     "alpha": [np.radians(-5), np.radians(5)],
     "maxabsstab": [np.radians(-5), np.radians(5)],
 }
