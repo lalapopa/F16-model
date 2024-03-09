@@ -4,6 +4,9 @@ import numpy as np
 import torch.nn as nn
 from distutils.util import strtobool
 
+import F16model.utils.control_metrics as utils_metrics
+from F16model.env import F16
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -175,6 +178,18 @@ def state_logger(run_name, action=None, init_state=None):
         with open("logs/" + run_name + ".txt", "a") as f:
             f.write(str(list(action)) + "\n")
 
+def calculate_episode_nmae(obs_signal, done_envs, step):
+    nMAE_avg = 0
+    for idx_done_env in done_envs:
+        obs_normalized_single= [_[idx_done_env] for _ in obs_signal]
+        obs_single = list(map(F16.denormalize, obs_normalized_single))
+        theta_obs = [i[2] for i in obs_single] 
+        theta_ref_obs = [i[4] for i in obs_single] 
+        nMAE_episode = utils_metrics.nMAE(theta_ref_obs[:step], theta_obs[:step])
+        nMAE_avg += nMAE_episode / len(done_envs) 
+        print(f"nMAE EP #{idx_done_env}: {nMAE_episode:.2f}")
+    return nMAE_avg 
+
 
 def write_to_tensorboard(writer, info, global_step):
     total_rewards = 0
@@ -211,7 +226,7 @@ def write_to_tensorboard(writer, info, global_step):
                 )
             avg_returns = total_rewards / len(log_rewards)
             print(
-                f"Step: {global_step} EPs: {len(log_rewards)} AVG episodes return: {avg_returns}"
+                f"Step: {global_step} EPs: {len(log_rewards)} AVG episodes return: {avg_returns:.2f}"
             )
             return avg_returns, done_envs
     return None, done_envs

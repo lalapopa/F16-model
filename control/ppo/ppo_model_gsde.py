@@ -12,6 +12,7 @@ from utils import (
     state_logger,
     weight_histograms,
     write_to_tensorboard,
+    calculate_episode_nmae,
 )
 import F16model.utils.control_metrics as utils_metrics
 
@@ -212,7 +213,6 @@ class Agent(nn.Module):
             with torch.no_grad():
                 self.sample_theta_gsde(next_obs)
                 init_gsde_state = next_obs
-            ref_signals = self.env.call("ref_signal")
             for step in range(0, self.config.num_steps):
                 global_step += 1 * self.config.num_envs
                 obs[step] = next_obs
@@ -228,38 +228,17 @@ class Agent(nn.Module):
                 next_obs, next_done = torch.Tensor(next_obs).to(
                     self.device
                 ), torch.Tensor(done).to(self.device)
-                if done.all():
-                    with torch.no_grad():
-                        self.sample_theta_gsde(next_obs)
-                    _, done_envs = write_to_tensorboard(writer, info, global_step)
-                elif done.any():  # ONLY for perfomance monitor & resample theta_gsde
+                if done.any():  # ONLY for perfomance monitor & resample theta_gsde
                     done_envs = []  # EXAMPLE: [0, 1, 2, 3] pick all paralel env
                     _, done_envs = write_to_tensorboard(writer, info, global_step)
-                    if done_envs:
-                        for idx_done_env in done_envs:
-                            init_gsde_state[idx_done_env] = next_obs[idx_done_env]
-                        with torch.no_grad():
-                            self.sample_theta_gsde(
-                                init_gsde_state, sample_idx=done_envs
-                            )
-                        nMAE_avg = 0
-                        for idx_done_env in done_envs:
-                            single_ref_signal = ref_signals[idx_done_env].theta_ref
-                            obs_single = [_[idx_done_env][2] for _ in obs]
-                            nMAE_episode = utils_metrics.nMAE(
-                                single_ref_signal[
-                                    : info["final_info"][idx_done_env]["episode_length"]
-                                ],
-                                obs_single[
-                                    : info["final_info"][idx_done_env]["episode_length"]
-                                ],
-                            )
-                            nMAE_avg += nMAE_episode / self.config.num_envs
-                            print(f"MAE EP#{idx_done_env} {nMAE_episode}")
-                        if nMAE_avg < min_nMAE_metric:
-                            min_nMAE_metric = nMAE_avg
-                            print(f"NEW best nMAE {nMAE_avg}")
-                    ref_signals = self.env.call("ref_signal")
+                    for idx_done_env in done_envs:
+                        init_gsde_state[idx_done_env] = next_obs[idx_done_env]
+                    with torch.no_grad():
+                        self.sample_theta_gsde(init_gsde_state, sample_idx=done_envs)
+                    nMAE_avg = calculate_episode_nmae(obs, done_envs, step)
+                    if nMAE_avg < min_nMAE_metric:
+                        min_nMAE_metric = nMAE_avg
+                        print(f"NEW best nMAE {nMAE_avg}")
 
             # bootstrap value if not done
             with torch.no_grad():
@@ -388,7 +367,7 @@ class Agent(nn.Module):
                     if approx_kl > self.config.target_kl:
                         break
 
-            print(f"Total_loss = {loss}")
+            print(f"Total_loss = {loss:.2f}")
             y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
             var_y = np.var(y_true)
             explained_var = (

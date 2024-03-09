@@ -46,7 +46,6 @@ class F16(gym.Env):
             self.action = Control(action, 0)
         else:
             raise TypeError(f"Action has type '{type(action)}' should be np.array")
-
         state = self.model.step(self.action)
         self.clock += self.dt
         self.clock = round(self.clock, 4)
@@ -83,7 +82,7 @@ class F16(gym.Env):
                 np.ones(tracking_err.shape),
             )
         )
-        reward = -1 / 3 * reward_vec.sum()
+        reward = -1 / 2 * reward_vec.sum()
         return reward
 
     def state_transform(self, state):
@@ -92,7 +91,8 @@ class F16(gym.Env):
         Oy
         wz
         theta
-#        theta_ref
+        V
+        theta_ref
         0.5 * (theta_ref - theta)
         """
         state_short = {
@@ -100,9 +100,9 @@ class F16(gym.Env):
         }  # take keys that defines in state_boundfrom `States` class
         state_short = list(state_short.values())
         state_short = F16.normalize(state_short)  # Always output normalized states
-#        state_short.append(self.ref_signal.theta_ref[self.episode_length])
+        state_short.append(self.ref_signal.theta_ref[self.episode_length])
         state_short.append(
-            0.5 * (self.ref_signal.theta_ref[self.episode_length] - state.theta)
+           0.5 * (self.ref_signal.theta_ref[self.episode_length] - state.theta)
         )
         return np.array(state_short)
 
@@ -115,7 +115,7 @@ class F16(gym.Env):
             reward += -1000
             self.done = True
         if abs(state.theta) >= np.radians(60):
-            reward += -1500
+            reward += -1000
             self.done = True
         if self.episode_length == (self.tn / self.dt) - 1:
             self.done = True

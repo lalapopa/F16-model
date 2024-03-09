@@ -11,7 +11,7 @@ from utils import parse_args
 from ppo_train_gsde import make_env
 from ppo_model_gsde import Agent
 
-model_name = "runs/old_reward/F16__1__1709496234__d000"
+model_name = "runs/old_reward/F16__1__1709915276__c6da"
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -80,7 +80,7 @@ if __name__ == "__main__":
             "tn": 10,
             "debug_state": False,
             "determenistic_ref": True,
-            "scenario": None,
+            "scenario": "step",
         }
         #        ENV_CONFIG["init_state"] = init_state
         #        ENV_CONFIG["init_control"] = init_control
@@ -88,4 +88,5 @@ if __name__ == "__main__":
         print(f"total reward {sum(r)}")
         print(f"nMAE: { utils_metrics.nMAE(ref_signal, [i[2] for i in states])}")
         utils_plots.result(states, actions, t, ref_signal=ref_signal, reward=r)
+
 #   utils_plots.algo(r, t)

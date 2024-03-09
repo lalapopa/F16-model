@@ -3,6 +3,8 @@ import numpy as np
 from F16model.env import F16, get_trimmed_state_control
 import F16model.utils.plots as utils_plots
 import F16model.utils.control as utils_control
+from F16model.utils.calc import normalize_value
+import F16model.data.plane as plane
 
 CONST_STEP = True
 
@@ -32,8 +34,12 @@ def run_sim(u0):
     ref_signal = env.ref_signal.theta_ref[:-1]
 
     for i, _ in enumerate(t):
-        action = np.array([stab_act[i], throttle_act[i]])
-        state, reward, done, _, info = env.step(action)
+        action = normalize_value(
+            np.array([stab_act[i]]), -plane.maxabsstab, plane.maxabsstab
+        )  # radians -> normalized action
+        state, reward, done, _, info = env.step(
+            action
+        )  # plz put action as normalized value
         if done:
             states = states[:i]
             actions = actions[:i]
@@ -42,7 +48,7 @@ def run_sim(u0):
             break
         states.append(F16.denormalize(state))
         rewards.append(reward)
-        actions.append(action[0])
+        actions.append(F16.rescale_action(action))
         times.append(info["clock"])
     return states, actions, rewards, times, ref_signal
 
@@ -55,7 +61,7 @@ if __name__ == "__main__":
         "tn": 10,
         "debug_state": False,
         "determenistic_ref": True,
-        "scenario": "step",
+        "scenario": "pure_step",
     }
     ENV_CONFIG["init_state"] = init_state
     ENV_CONFIG["init_control"] = init_control

@@ -43,7 +43,6 @@ def solve(x, u):
     V_dot = (Vx * Vx_dot - Vy * Vy_dot) / x.V
     alpha_dot = (-Vx * Vy_dot + Vy * Vx_dot) / (Vx**2 + Vy**2)
     wz_dot = MRz / plane.Jz
-
     Dx = model.States(
         Ox=float(Ox_dot),
         Oy=float(Oy_dot),

@@ -20,5 +20,5 @@ def mae(y_true, predictions):
 
 def nMAE(y_true, predictions):
     mae_value = mae(y_true, predictions)
-    nmae = mae_value / np.mean(np.abs(y_true))
+    nmae = mae_value / np.mean(np.abs(y_true) + 1e-9)
     return nmae
