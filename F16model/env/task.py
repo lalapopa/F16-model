@@ -20,6 +20,8 @@ class ReferenceSignal:
             self.get_cos_reference_signal()
         elif scenario == "pure_step":
             self.get_pure_step_reference_signal()
+        elif scenario == "combo":
+            self.get_combo_reference_signal()
 
     def get_step_reference_signal(self):
         if self.determenistic:
@@ -53,6 +55,40 @@ class ReferenceSignal:
             t_step = random.choice([1, 2, 3, 4])
         t_step_idx = np.abs(self.t - t_step).argmin()
         self.theta_ref[t_step_idx:] = amp
+
+    def get_combo_reference_signal(self):
+        if self.determenistic:
+            step_amp = np.radians(10)
+            sin_amp = np.radians(10)
+            freq = 0.25
+            cos_step_amp = np.radians(20)
+        else:
+            step_amp = np.radians(random.choice([20, 10, 5, -5, -10, -20]))
+            sin_amp = np.radians(random.choice([20, 10, 5, -5, -10, -20]))
+            freq = random.choice([0.125, 0.25, 0.45, 0.5, 0.75])
+            cos_step_amp = np.radians(random.choice([20, 10, 5, -5, -10, -20]))
+
+        scenario = []
+        for _ in range(0, int(self.tn / 10)):
+            signal_len = int(1 / self.dt)
+            step_signal = np.concatenate(
+                ([0] * int(signal_len/2), [step_amp] * int(signal_len * 2), [0] * int(signal_len/2))
+            )
+            sin_signal = np.sin(2 * np.pi * freq * np.arange(0, 3, self.dt)) * sin_amp
+            cos_step_signal = np.concatenate(
+                (
+                    self.cosstep(0, 1)[:signal_len] * cos_step_amp,
+                    [cos_step_amp] * signal_len,
+                    self.cosstep(0, 1)[:signal_len][::-1] * cos_step_amp,
+                )
+            )
+            scenario.append(step_signal)
+            scenario.append(sin_signal)
+            scenario.append(cos_step_signal)
+        if not self.determenistic:
+            random.shuffle(scenario)
+        scenario = np.concatenate(scenario)
+        self.theta_ref[: len(scenario)] = scenario
 
     def cosstep(self, start_time, w):
         """

@@ -66,24 +66,12 @@ class F16(gym.Env):
 
     def compute_reward(self, state):
         tracking_ref = (self.ref_signal.theta_ref[self.episode_length],)
-        tracking_err = tracking_ref - state.theta
-        if np.sign(tracking_err) == 1:
-            sign_coeff = 1
-        elif np.sign(tracking_err) == -1:
-            sign_coeff = 2
-        else:
-            sign_coeff = 1
-
-        tracking_Q = np.array([1 / np.radians(30)])
-        reward_vec = np.abs(
-            np.clip(
-                (sign_coeff * tracking_err) @ tracking_Q,
-                -np.ones(tracking_err.shape),
-                np.ones(tracking_err.shape),
-            )
-        )
-        reward = -1 / 2 * reward_vec.sum()
-        return reward
+        e = np.degrees(tracking_ref - state.theta)
+        k = 1
+        asymptotic_error = np.clip(1 - ((np.abs(e) / k) / (1 + (np.abs(e) / k))), a_min=0, a_max=1)
+        linear_error = np.clip(1 - (1 / k) * e**2, a_min=0, a_max=1)
+        reward = asymptotic_error + 0.04 * linear_error
+        return reward.item()
 
     def state_transform(self, state):
         """
@@ -102,7 +90,7 @@ class F16(gym.Env):
         state_short = F16.normalize(state_short)  # Always output normalized states
         state_short.append(self.ref_signal.theta_ref[self.episode_length])
         state_short.append(
-           0.5 * (self.ref_signal.theta_ref[self.episode_length] - state.theta)
+            0.5 * (self.ref_signal.theta_ref[self.episode_length] - state.theta)
         )
         return np.array(state_short)
 
@@ -182,7 +170,7 @@ class F16(gym.Env):
                     )
             except KeyError:
                 state = get_random_state()
-        return state 
+        return state
 
     def render(self):
         raise UserWarning("TODO: Implement this function")

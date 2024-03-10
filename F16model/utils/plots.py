@@ -42,7 +42,8 @@ def result(
     plt.subplot(max_plots, 1, 4)
     plt.plot(
         time[cut_index:],
-        2 * np.degrees([i[3] for i in x_array][cut_index:]),
+        np.degrees([i[2] for i in x_array][cut_index:])
+        - np.degrees(ref_signal)[cut_index:],
         "-b",
         label=r"$\vartheta_{err}$",
     )
