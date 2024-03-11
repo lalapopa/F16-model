@@ -65,8 +65,8 @@ class F16(gym.Env):
         return out_state, reward, self.done, False, info
 
     def compute_reward(self, state):
-        tracking_ref = (self.ref_signal.theta_ref[self.episode_length],)
-        e = np.degrees(tracking_ref - state.theta)
+        tracking_ref = (self.ref_signal.wz_ref[self.episode_length],)
+        e = np.degrees(tracking_ref - state.wz)
         k = 1
         asymptotic_error = np.clip(1 - ((np.abs(e) / k) / (1 + (np.abs(e) / k))), a_min=0, a_max=1)
         linear_error = np.clip(1 - (1 / k) * e**2, a_min=0, a_max=1)
@@ -78,19 +78,18 @@ class F16(gym.Env):
         Return states are :
         Oy
         wz
-        theta
         V
-        theta_ref
-        0.5 * (theta_ref - theta)
+        wz_ref
+        0.5 * (wz_ref - wz)
         """
         state_short = {
             k: vars(state)[k] for k, _ in plane.state_bound.items() if k in vars(state)
         }  # take keys that defines in state_boundfrom `States` class
         state_short = list(state_short.values())
         state_short = F16.normalize(state_short)  # Always output normalized states
-        state_short.append(self.ref_signal.theta_ref[self.episode_length])
+        state_short.append(self.ref_signal.wz_ref[self.episode_length])
         state_short.append(
-            0.5 * (self.ref_signal.theta_ref[self.episode_length] - state.theta)
+            0.5 * (self.ref_signal.wz_ref[self.episode_length] - state.wz)
         )
         return np.array(state_short)
 
@@ -102,7 +101,7 @@ class F16(gym.Env):
         if state.Oy >= 30000:
             reward += -1000
             self.done = True
-        if abs(state.theta) >= np.radians(60):
+        if abs(state.wz) >= np.radians(50):
             reward += -1000
             self.done = True
         if self.episode_length == (self.tn / self.dt) - 1:

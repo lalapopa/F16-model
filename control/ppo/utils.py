@@ -183,8 +183,8 @@ def calculate_episode_nmae(obs_signal, done_envs, step):
     for idx_done_env in done_envs:
         obs_normalized_single= [_[idx_done_env] for _ in obs_signal]
         obs_single = list(map(F16.denormalize, obs_normalized_single))
-        theta_obs = [i[2] for i in obs_single] 
-        theta_ref_obs = [i[4] for i in obs_single] 
+        theta_obs = [i[1] for i in obs_single] 
+        theta_ref_obs = [i[3] for i in obs_single] 
         nMAE_episode = utils_metrics.nMAE(theta_ref_obs[:step], theta_obs[:step])
         nMAE_avg += nMAE_episode / len(done_envs) 
         print(f"nMAE EP #{idx_done_env}: {nMAE_episode:.2f}")

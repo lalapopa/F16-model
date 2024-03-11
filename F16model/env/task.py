@@ -10,18 +10,20 @@ class ReferenceSignal:
         self.dt = dt
         self.tn = tn
         self.t = np.arange(0, self.tn, self.dt)
-        self.theta_ref = np.zeros(self.t.shape)
         self.determenistic = determenistic
         if scenario == None:
             scenario = random.choice(["step", "cos", "pure_step"])
+
         if scenario == "step":
-            self.get_step_reference_signal()
+            reference_signal = self.get_step_reference_signal()
         elif scenario == "cos":
-            self.get_cos_reference_signal()
+            reference_signal = self.get_cos_reference_signal()
         elif scenario == "pure_step":
-            self.get_pure_step_reference_signal()
+            reference_signal = self.get_pure_step_reference_signal()
         elif scenario == "combo":
-            self.get_combo_reference_signal()
+            reference_signal = self.get_combo_reference_signal()
+        self.theta_ref = reference_signal
+        self.wz_ref = reference_signal / 2
 
     def get_step_reference_signal(self):
         if self.determenistic:
@@ -29,13 +31,14 @@ class ReferenceSignal:
         else:
             A_theta = np.radians(random.choice([20, 10, 5, -5, -10, -20]))
 
-        self.theta_ref = A_theta * self.cosstep(-1, 2) * 2 - A_theta
-        self.theta_ref -= A_theta * self.cosstep(self.tn * 0.25, 1)
-        self.theta_ref -= A_theta * self.cosstep(self.tn * 0.50, 1)
-        self.theta_ref += A_theta * self.cosstep(self.tn * 0.75, 1)
-        self.theta_ref = self.theta_ref[
+        reference_signal = A_theta * self.cosstep(-1, 2) * 2 - A_theta
+        reference_signal -= A_theta * self.cosstep(self.tn * 0.25, 1)
+        reference_signal -= A_theta * self.cosstep(self.tn * 0.50, 1)
+        reference_signal += A_theta * self.cosstep(self.tn * 0.75, 1)
+        reference_signal = reference_signal[
             ::-1
         ]  # Flip ref signal for zero in first 2 second to prevent Agent tilt in begining
+        return reference_signal
 
     def get_cos_reference_signal(self):
         if self.determenistic:
@@ -44,9 +47,11 @@ class ReferenceSignal:
         else:
             A_theta = np.radians(random.choice([10, 5, -5, -10]))
             freq = random.choice([0.125, 0.25, 0.45, 0.5])
-        self.theta_ref = np.sin(2 * np.pi * freq * self.t) * A_theta
+        reference_signal = np.sin(2 * np.pi * freq * self.t) * A_theta
+        return reference_signal
 
     def get_pure_step_reference_signal(self):
+        reference_signal = np.zeros(self.t.shape)
         if self.determenistic:
             amp = np.radians(10)
             t_step = 1
@@ -54,9 +59,11 @@ class ReferenceSignal:
             amp = np.radians(random.choice([20, 10, 5, -5, -10, -20]))
             t_step = random.choice([1, 2, 3, 4])
         t_step_idx = np.abs(self.t - t_step).argmin()
-        self.theta_ref[t_step_idx:] = amp
+        reference_signal[t_step_idx:] = amp
+        return reference_signal
 
     def get_combo_reference_signal(self):
+        reference_signal = np.zeros(self.t.shape)
         if self.determenistic:
             step_amp = np.radians(10)
             sin_amp = np.radians(10)
@@ -72,7 +79,11 @@ class ReferenceSignal:
         for _ in range(0, int(self.tn / 10)):
             signal_len = int(1 / self.dt)
             step_signal = np.concatenate(
-                ([0] * int(signal_len/2), [step_amp] * int(signal_len * 2), [0] * int(signal_len/2))
+                (
+                    [0] * int(signal_len / 2),
+                    [step_amp] * int(signal_len * 2),
+                    [0] * int(signal_len / 2),
+                )
             )
             sin_signal = np.sin(2 * np.pi * freq * np.arange(0, 3, self.dt)) * sin_amp
             cos_step_signal = np.concatenate(
@@ -88,7 +99,8 @@ class ReferenceSignal:
         if not self.determenistic:
             random.shuffle(scenario)
         scenario = np.concatenate(scenario)
-        self.theta_ref[: len(scenario)] = scenario
+        reference_signal[: len(scenario)] = scenario
+        return reference_signal
 
     def cosstep(self, start_time, w):
         """

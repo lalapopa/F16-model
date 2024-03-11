@@ -23,7 +23,7 @@ def objective(trial):
         "tn": 10,
         "debug_state": False,
         "determenistic_ref": False,
-        "scenario": "step",
+        "scenario": "combo",
     }
     envs = gym.vector.SyncVectorEnv(
         [make_env(args.seed + i, ENV_CONFIG) for i in range(args.num_envs)]

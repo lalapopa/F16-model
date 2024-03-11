@@ -20,7 +20,7 @@ sb = 0
 state_bound = {
     "Oy": [0, 35000],
     "wz": [np.radians(-150), np.radians(150)],
-    "theta": [np.radians(-90), np.radians(270)],
+    #    "theta": [np.radians(-90), np.radians(270)],
     "V": [0, 500],
     #     "alpha": [np.radians(-20), np.radians(45)],
 }

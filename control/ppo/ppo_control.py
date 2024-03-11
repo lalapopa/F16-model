@@ -11,7 +11,7 @@ from utils import parse_args
 from ppo_train_gsde import make_env
 from ppo_model_gsde import Agent
 
-model_name = "runs/new_reward/F16__1__1710082704__093f"
+model_name = "runs/omega_z_control/F16__1__1710094498__4495"
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -19,10 +19,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def run_sim():
     args = parse_args()
-    # args.seed = 289  # 7619 -18 reward OMG
-    # args.seed = 251
-    # args.seed = 719
     args.seed = random.randint(1, 999)
+    #    args.seed = 559
+
     print(f"Run with seed = {args.seed}")
     envs = gym.vector.SyncVectorEnv([make_env(args.seed, ENV_CONFIG) for _ in range(1)])
 
@@ -38,7 +37,7 @@ def run_sim():
     states = []
     rewards = []
     clock = []
-    ref_signal = agent.env.call("ref_signal")[0].theta_ref[:-1]
+    ref_signal = agent.env.call("ref_signal")[0].wz_ref[:-1]
     # print(
     #     f"INIT THETA {np.degrees(F16.denormalize(state[0])[2])} | REF THETA {np.degrees(ref_signal[15])}"
     # )
@@ -72,20 +71,23 @@ def run_sim():
 
 if __name__ == "__main__":
     for i in range(1, 10):
-        #        init_state = np.array([0, 3000, 0, 0, 200, 0])
-        #        init_control = np.array([0, 0])
+        init_state = np.array([0, 2800, 0, 0, 110, 0])
+        init_control = np.array([0, 0])
         ENV_CONFIG = {
             "dt": 0.01,
             "tn": 10,
             "debug_state": False,
             "determenistic_ref": False,
-            "scenario": "step",
+            "scenario": "pure_step",
         }
-        #        ENV_CONFIG["init_state"] = init_state
-        #        ENV_CONFIG["init_control"] = init_control
+        ENV_CONFIG["init_state"] = init_state
+        ENV_CONFIG["init_control"] = init_control
         states, actions, ref_signal, r, t = run_sim()
         print(f"Total reward: {sum(r)}")
-        print(f"nMAE: { utils_metrics.nMAE(ref_signal, [i[2] for i in states])}")
-        utils_plots.result(states, actions, t, ref_signal=ref_signal, reward=r)
+        print(f"nMAE: { utils_metrics.nMAE(ref_signal, [i[1] for i in states])}")
+        utils_plots.result(
+            states, actions, t, ref_signal=ref_signal, reward=r, control="omega"
+        )
+
 
 #   utils_plots.algo(r, t)
