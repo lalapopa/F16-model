@@ -11,7 +11,10 @@ from utils import parse_args
 from ppo_train_gsde import make_env
 from ppo_model_gsde import Agent
 
-model_name = "runs/omega_z_control/F16__1__1710094498__4495"
+# model_name = "runs/optuna_omega_z_control/F16__1__1710300960__cd61"
+# model_name = "runs/integral_reward/F16__1__1710412261__50f9"
+# model_name = "runs/integral_reward/F16__1__1710426366__703c"
+model_name = "runs/integral_reward/F16__1__1710426366__703c"
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -20,7 +23,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def run_sim():
     args = parse_args()
     args.seed = random.randint(1, 999)
-    #    args.seed = 559
+    #    args.seed = 886
 
     print(f"Run with seed = {args.seed}")
     envs = gym.vector.SyncVectorEnv([make_env(args.seed, ENV_CONFIG) for _ in range(1)])

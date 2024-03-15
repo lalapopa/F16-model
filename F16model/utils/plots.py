@@ -64,24 +64,27 @@ def result(
     plt.subplot(max_plots, 1, error_plot_pos)
     plt.plot(
         time[cut_index:],
-        np.degrees([i[1] for i in x_array][cut_index:])
-        - np.degrees(ref_signal)[cut_index:],
+        np.degrees(ref_signal)[cut_index:]
+        - np.degrees([i[1] for i in x_array][cut_index:]),
         "-b",
-        label=r"%s" %error_label,
+        label=r"%s" % error_label,
     )
     plt.ylabel(r"Error")
     plt.legend()
     plt.grid()
 
-    plt.subplot(max_plots, 1, error_plot_pos + 1)
-    plt.plot(time[cut_index:], reward[cut_index:], "-b")
+    ax1 = plt.subplot(max_plots, 1, error_plot_pos + 1)
+    ax1.plot(time[cut_index:], reward[cut_index:], "-b", label=r"$r(t)$")
     plt.ylabel(r"Reward")
-    plt.grid()
+    plt.legend()
+    ax2 = ax1.twinx()
+    ax2.plot(time[cut_index:], [i[-1] for i in x_array][cut_index:], "-g", label=r"Integral term")
+    plt.ylabel(r"I term")
+    plt.legend()
 
     plt.subplot(max_plots, 1, error_plot_pos + 2)
     plt.plot(time[cut_index:], [i[0] for i in x_array][cut_index:], "-b")
     plt.ylabel("$H$, m")
-    plt.grid()
     plt.xlabel("t, sec")
 
     if plot_name:
