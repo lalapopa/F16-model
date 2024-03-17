@@ -67,20 +67,12 @@ class F16(gym.Env):
         return out_state, reward, self.done, False, info
 
     def compute_reward(self, state):
-        tracking_ref = self.ref_signal.wz_ref[self.episode_length]
+        tracking_ref = (self.ref_signal.wz_ref[self.episode_length],)
         e = np.degrees(tracking_ref - state.wz)
-
-        self.error_integral += float(e / 1000)
-        reward_integral = 0.5 * self.error_integral 
-        if 0 < np.abs(e) < 1:
-            reward_integral = 0.5 * self.error_integral
-        else:
-            reward_integral = 0
-
         k = 1
         asymptotic_error = np.clip(1 - ((np.abs(e) / k) / (1 + (np.abs(e) / k))), a_min=0, a_max=1)
         linear_error = np.clip(1 - (1 / k) * e**2, a_min=0, a_max=1)
-        reward = asymptotic_error + 0.04 * linear_error + reward_integral
+        reward = asymptotic_error + 0.04 * linear_error
         return reward.item()
 
     def state_transform(self, state):
@@ -91,7 +83,6 @@ class F16(gym.Env):
         V
         wz_ref
         0.5 * (wz_ref - wz)
-        error_integral
         """
         state_short = {
             k: vars(state)[k] for k, _ in plane.state_bound.items() if k in vars(state)
@@ -102,7 +93,6 @@ class F16(gym.Env):
         state_short.append(
             0.5 * (self.ref_signal.wz_ref[self.episode_length] - state.wz)
         )
-        state_short.append(self.error_integral)
         return np.array(state_short)
 
     def check_state(self, state):

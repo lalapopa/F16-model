@@ -133,6 +133,9 @@ def parse_args():
     parser.add_argument(
         "--save-dir", type=str, default="runs/", help="where to save running info"
     )
+    parser.add_argument(
+        "--f", type=str, default="", help="ipykernel"
+    )
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)

@@ -11,22 +11,17 @@ from utils import parse_args
 from ppo_train_gsde import make_env
 from ppo_model_gsde import Agent
 
-# model_name = "runs/optuna_omega_z_control/F16__1__1710300960__cd61"
-# model_name = "runs/integral_reward/F16__1__1710412261__50f9"
-# model_name = "runs/integral_reward/F16__1__1710426366__703c"
-model_name = "runs/integral_reward/F16__1__1710426366__703c"
-
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def run_sim():
+def run_sim(env_config, model_name):
     args = parse_args()
     args.seed = random.randint(1, 999)
     #    args.seed = 886
 
     print(f"Run with seed = {args.seed}")
-    envs = gym.vector.SyncVectorEnv([make_env(args.seed, ENV_CONFIG) for _ in range(1)])
+    envs = gym.vector.SyncVectorEnv([make_env(args.seed, env_config) for _ in range(1)])
 
     agent = Agent(envs, args)
     agent.load(model_name)
@@ -44,7 +39,7 @@ def run_sim():
     # print(
     #     f"INIT THETA {np.degrees(F16.denormalize(state[0])[2])} | REF THETA {np.degrees(ref_signal[15])}"
     # )
-    for _ in range(0, 2048):
+    while True:
         state = torch.Tensor(state).to(device)
         action, _, _, _ = agent.get_action_and_value(state)
         action = action.cpu().detach().numpy()
@@ -73,6 +68,7 @@ def run_sim():
 
 
 if __name__ == "__main__":
+    model_name = "./runs/optuna_omega_z_control/F16__1__1710300960__cd61"
     for i in range(1, 10):
         init_state = np.array([0, 2800, 0, 0, 110, 0])
         init_control = np.array([0, 0])
@@ -80,16 +76,23 @@ if __name__ == "__main__":
             "dt": 0.01,
             "tn": 10,
             "debug_state": False,
-            "determenistic_ref": False,
-            "scenario": "pure_step",
+            "determenistic_ref": True,
+            "scenario": "cos",
         }
         ENV_CONFIG["init_state"] = init_state
         ENV_CONFIG["init_control"] = init_control
-        states, actions, ref_signal, r, t = run_sim()
+        states, actions, ref_signal, r, t = run_sim(ENV_CONFIG, model_name)
+        nmae_value = utils_metrics.nMAE(ref_signal, [i[1] for i in states])
         print(f"Total reward: {sum(r)}")
-        print(f"nMAE: { utils_metrics.nMAE(ref_signal, [i[1] for i in states])}")
+        print(f"nMAE: {nmae_value}")
         utils_plots.result(
-            states, actions, t, ref_signal=ref_signal, reward=r, control="omega"
+            states,
+            actions,
+            t,
+            ref_signal=ref_signal,
+            reward=r,
+            control="omega",
+            plot_name=f"{nmae_value:.3f}_result",
         )
 
 
