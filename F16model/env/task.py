@@ -27,7 +27,7 @@ class ReferenceSignal:
 
     def get_step_reference_signal(self):
         if self.determenistic:
-            A_theta = 20 * np.pi / 180  # [rad]
+            A_theta = 10 * np.pi / 180  # [rad]
         else:
             A_theta = np.radians(random.choice([20, 10, 5, -5, -10, -20]))
 

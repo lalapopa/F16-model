@@ -228,13 +228,13 @@ class Agent(nn.Module):
                 next_obs, next_done = torch.Tensor(next_obs).to(
                     self.device
                 ), torch.Tensor(done).to(self.device)
+                with torch.no_grad():
+                    self.sample_theta_gsde(next_obs)
                 if done.any():  # ONLY for perfomance monitor & resample theta_gsde
                     done_envs = []  # EXAMPLE: [0, 1, 2, 3] pick all paralel env
                     _, done_envs = write_to_tensorboard(writer, info, global_step)
                     for idx_done_env in done_envs:
                         init_gsde_state[idx_done_env] = next_obs[idx_done_env]
-                    with torch.no_grad():
-                        self.sample_theta_gsde(init_gsde_state, sample_idx=done_envs)
                     nMAE_avg = calculate_episode_nmae(obs, done_envs, step)
                     if nMAE_avg < min_nMAE_metric:
                         min_nMAE_metric = nMAE_avg

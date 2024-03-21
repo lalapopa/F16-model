@@ -63,6 +63,7 @@ class F16(gym.Env):
             "episode_length": self.episode_length,
             "total_return": self.total_return,
             "clock": self.clock,
+            "state": self.prev_state,
         }
         return out_state, reward, self.done, False, info
 

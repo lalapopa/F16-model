@@ -78,7 +78,7 @@ class States:
         return self.__rmul__(other)
 
     def __repr__(self):
-        return f"Ox = {self.Ox} m; Oy = {self.Oy} m; wz = {np.degrees(self.wz)} deg/s; V = {self.V}; theta = {np.degrees(self.theta)}; stab_pos = {np.degrees(self.stab)} deg; dstab = {np.degrees(self.dstab)} deg/s; thrust = {self.Pa} H %"
+        return f"Ox = {self.Ox} m; Oy = {self.Oy} m; wz = {np.degrees(self.wz)} deg/s; V = {self.V} m/s; theta = {np.degrees(self.theta)} deg; stab_pos = {np.degrees(self.stab)} deg; dstab = {np.degrees(self.dstab)} deg/s; thrust = {self.Pa} H %"
 
 
 class Control:
