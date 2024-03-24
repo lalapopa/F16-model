@@ -210,9 +210,9 @@ class Agent(nn.Module):
             obs_init, _ = self.env.reset(seed=self.config.seed + update)
             next_obs = torch.Tensor(obs_init).to(self.device)
             next_done = torch.zeros(self.config.num_envs).to(self.device)
-            with torch.no_grad():
-                self.sample_theta_gsde(next_obs)
-                init_gsde_state = next_obs
+#            with torch.no_grad():
+#                self.sample_theta_gsde(next_obs)
+#                init_gsde_state = next_obs
             for step in range(0, self.config.num_steps):
                 global_step += 1 * self.config.num_envs
                 obs[step] = next_obs
@@ -228,13 +228,13 @@ class Agent(nn.Module):
                 next_obs, next_done = torch.Tensor(next_obs).to(
                     self.device
                 ), torch.Tensor(done).to(self.device)
-                with torch.no_grad():
-                    self.sample_theta_gsde(next_obs)
+                #with torch.no_grad():
+#                    self.sample_theta_gsde(next_obs)
                 if done.any():  # ONLY for perfomance monitor & resample theta_gsde
                     done_envs = []  # EXAMPLE: [0, 1, 2, 3] pick all paralel env
                     _, done_envs = write_to_tensorboard(writer, info, global_step)
-                    for idx_done_env in done_envs:
-                        init_gsde_state[idx_done_env] = next_obs[idx_done_env]
+#                    for idx_done_env in done_envs:
+#                        init_gsde_state[idx_done_env] = next_obs[idx_done_env]
                     nMAE_avg = calculate_episode_nmae(obs, done_envs, step)
                     if nMAE_avg < min_nMAE_metric:
                         min_nMAE_metric = nMAE_avg
@@ -299,7 +299,7 @@ class Agent(nn.Module):
                 ):
                     end = start + self.config.minibatch_size
                     mb_inds = b_inds[start:end]
-                    self.sample_theta_gsde(b_obs[mb_inds])
+#                    self.sample_theta_gsde(b_obs[mb_inds])
                     # print(
                     #     f"before Deadge\nobs:{b_obs[mb_inds]}\naction:{b_actions.long()[mb_inds]}"
                     # )

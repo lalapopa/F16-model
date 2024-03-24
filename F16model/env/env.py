@@ -55,10 +55,8 @@ class F16(gym.Env):
         self.clock = round(self.clock, 4)
         reward = self.check_state(state)  # If fly out of bound give -1000 reward
         reward += self.compute_reward(state)
-        print(f"BEFORE: {self.prev_state.wz} | {state.wz} |")
         state_tmp = copy.deepcopy(state)
         noized_state = self.add_noise(state_tmp)
-        print(f"AFTER: {self.prev_state.wz} | {noized_state.wz} | {state.wz}")
 
         out_state = self.state_transform(noized_state)
         self.episode_length += 1
@@ -110,10 +108,10 @@ class F16(gym.Env):
         if state.Oy >= 30000:
             reward += -1000
             self.done = True
-        #        if abs(state.wz) >= np.radians(50):
-        #            print(f"Early done in step #{self.episode_length}")
-        #            reward += -1000
-        #            self.done = True
+        if abs(state.wz) >= np.radians(50):
+            print(f"Early done in step #{self.episode_length}")
+            reward += -1000
+            self.done = True
         if self.episode_length == (self.tn / self.dt) - 1:
             self.done = True
         return reward
@@ -143,13 +141,13 @@ class F16(gym.Env):
             if self.config["noise"]:
                 noise_percent = self.config["noise"]
                 noise_part_wz = (
-                    plane.state_bound["wz"][1] * noise_percent * np.random.normal(0, 1)
+                    np.random.normal(0, 0.5)
                 )
-                noise_part_Oy = (
-                    plane.state_bound["Oy"][1] * noise_percent * np.random.normal(0, 1)
-                )
-                state.wz = state.wz + noise_part_wz
-                state.Oy = state.Oy + noise_part_Oy
+#                noise_part_Oy = (
+#                    plane.state_bound["Oy"][1] * noise_percent * np.random.normal(0, 1)
+#                )
+                state.wz = state.wz + np.radians(noise_part_wz)
+#                state.Oy = state.Oy + noise_part_Oy
 
         return state
 
