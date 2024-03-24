@@ -1,6 +1,7 @@
 import random
 import numpy as np
 import gymnasium as gym
+import copy
 
 from F16model.model import States, Control, F16model
 from F16model.utils.calc import normalize_value, minmaxscaler
@@ -49,16 +50,19 @@ class F16(gym.Env):
         else:
             raise TypeError(f"Action has type '{type(action)}' should be np.array")
         state = self.model.step(self.action)
+        self.prev_state = state
         self.clock += self.dt
         self.clock = round(self.clock, 4)
         reward = self.check_state(state)  # If fly out of bound give -1000 reward
         reward += self.compute_reward(state)
+        print(f"BEFORE: {self.prev_state.wz} | {state.wz} |")
+        state_tmp = copy.deepcopy(state)
+        noized_state = self.add_noise(state_tmp)
+        print(f"AFTER: {self.prev_state.wz} | {noized_state.wz} | {state.wz}")
 
-        out_state = self.state_transform(state)
-        self.prev_state = state
-        self.total_return += reward
+        out_state = self.state_transform(noized_state)
         self.episode_length += 1
-
+        self.total_return += reward
         info = {
             "episode_length": self.episode_length,
             "total_return": self.total_return,
@@ -71,7 +75,9 @@ class F16(gym.Env):
         tracking_ref = (self.ref_signal.wz_ref[self.episode_length],)
         e = np.degrees(tracking_ref - state.wz)
         k = 1
-        asymptotic_error = np.clip(1 - ((np.abs(e) / k) / (1 + (np.abs(e) / k))), a_min=0, a_max=1)
+        asymptotic_error = np.clip(
+            1 - ((np.abs(e) / k) / (1 + (np.abs(e) / k))), a_min=0, a_max=1
+        )
         linear_error = np.clip(1 - (1 / k) * e**2, a_min=0, a_max=1)
         reward = asymptotic_error + 0.04 * linear_error
         return reward.item()
@@ -104,10 +110,10 @@ class F16(gym.Env):
         if state.Oy >= 30000:
             reward += -1000
             self.done = True
-        if abs(state.wz) >= np.radians(50):
-            print(f"Early done in step #{self.episode_length}")
-            reward += -1000
-            self.done = True
+        #        if abs(state.wz) >= np.radians(50):
+        #            print(f"Early done in step #{self.episode_length}")
+        #            reward += -1000
+        #            self.done = True
         if self.episode_length == (self.tn / self.dt) - 1:
             self.done = True
         return reward
@@ -131,6 +137,21 @@ class F16(gym.Env):
             additional_states = state_norm[i + 1 :]
             norm_values = np.concatenate((norm_values, additional_states))
         return norm_values
+
+    def add_noise(self, state):
+        if "noise" in self.config:
+            if self.config["noise"]:
+                noise_percent = self.config["noise"]
+                noise_part_wz = (
+                    plane.state_bound["wz"][1] * noise_percent * np.random.normal(0, 1)
+                )
+                noise_part_Oy = (
+                    plane.state_bound["Oy"][1] * noise_percent * np.random.normal(0, 1)
+                )
+                state.wz = state.wz + noise_part_wz
+                state.Oy = state.Oy + noise_part_Oy
+
+        return state
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
